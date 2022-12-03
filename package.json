@@ -1,9 +1,10 @@
 {
-  "name": "ems-backend",
+  "type": "module",
+  "name": "lightquark",
   "version": "1.0.0",
-  "description": "Eye Management System (Backend)",
-  "main": "src/index.ts",
-  "repository": "https://github.com/LITdevs/ems-backend.git",
+  "description": "Proof of Concept",
+  "exports": "./src/index.ts",
+  "repository": "https://github.com/LITdevs/Lightquark.git",
   "author": "LIT Devs",
   "license": "UNLICENSED",
   "scripts": {
@@ -14,6 +15,8 @@
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "express-ws": "^5.0.2",
+    "file-type": "^18.0.0",
+    "form-data": "^4.0.0",
     "jose": "^4.10.4",
     "mongoose": "^6.7.0",
     "tail": "^2.2.4",
@@ -26,5 +29,8 @@
     "@types/tail": "^2.2.1",
     "concurrently": "^7.5.0",
     "nodemon": "^2.0.20"
+  },
+  "engines": {
+    "node": ">=14.16"
   }
 }

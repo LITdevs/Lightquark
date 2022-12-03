@@ -1,12 +1,18 @@
 import express, {Request, Response} from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
-import expressWs from 'express-ws';
-import db from "./db";
+import bodyParser from 'body-parser';
+//import expressWs from 'express-ws';
+import db from "./db.js";
 const app = express();
-const ews = expressWs(app)
+//const ews = expressWs(app)
 
+// Parse JSON bodies
 app.use(express.json());
+// Parse binary bodies
+app.use(express.raw({type: 'image/*', limit: '10mb'}));
+
+// Allow CORS usage
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "*");
@@ -14,16 +20,12 @@ app.use((req, res, next) => {
     next();
 })
 
-import auth from './routes/auth';
-import minecraft from './routes/minecraft';
-import pm2 from './routes/pm2';
-import ass from './routes/ass';
-import nginx from './routes/nginx';
+import auth from './routes/auth.js';
+import user from './routes/user.js';
+import quark from './routes/quark.js';
 app.use("/v1/auth", auth);
-app.use("/v1/minecraft", minecraft)
-app.use("/v1/pm2", pm2);
-app.use("/v1/ass", ass);
-app.use("/v1/nginx", nginx);
+app.use("/v1/user", user);
+app.use("/v1/quark", quark);
 
 app.get("/v1/ping", (req : Request, res : Response) => {
     res.contentType("text/plain");
@@ -43,8 +45,8 @@ app.patch("*", (req : Request, res : Response) => {
     res.status(403).end();
 })
 
-let port = process.env.EMS_API_PORT || 1337
-db.dbEvents.on("ready", () => {
+let port = process.env.LQ_PORT || 10000;
+db.dbEvents.on("login_ready", () => {
     app.listen(port, () => {
         console.info(`App listening on ${port}`);
     })
@@ -53,7 +55,7 @@ db.dbEvents.on("ready", () => {
 /**
  * Get the express-ws instance
  * @returns ews - express-ws instance
- */
+ * /
 export function getEws() {
     return ews;
-}
+}*/

@@ -5,5 +5,6 @@ export default new Mongoose.Schema({
     passwordHash: Buffer,
     email: {type: String, unique : true},
     salt: Buffer,
+    username: String,
     admin: Boolean
 });

@@ -1,4 +1,4 @@
-import InvalidReply from "./InvalidReply";
+import InvalidReply from "./InvalidReply.js";
 
 class InvalidReplyMessage extends InvalidReply {
     constructor(message: string) {

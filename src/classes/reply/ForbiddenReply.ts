@@ -1,4 +1,4 @@
-import Reply from "./Reply";
+import Reply from "./Reply.js";
 
 class ForbiddenReply extends Reply {
     constructor(message? : string) {
