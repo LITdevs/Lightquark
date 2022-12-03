@@ -6,6 +6,11 @@ import * as mongoose from "mongoose";
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
 import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
 import NotFoundReply from "../classes/reply/NotFoundReply.js";
+import {isUint8Array} from "util/types";
+import {fileTypeFromBuffer, FileTypeResult} from "file-type";
+import FormData from "form-data";
+import fs from "fs";
+import axios from "axios";
 
 const router: Router = express.Router();
 
@@ -149,6 +154,81 @@ router.post("/invite/:invite", Auth, (req, res) => {
             }
             res.json(new Reply(200, true, {message: "Joined quark", quark: inviteQuark}));
         });
+    })
+})
+
+/**
+ * Upload a quark icon
+ */
+router.put("/:id/icon", Auth, async (req, res) => {
+    // Validate the quark id
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
+    // Validate the request body
+    if (!req.body || !isUint8Array(req.body)) return res.json(new Reply(400, false, {message: "Request body must be an image file in binary form"}));
+    let fileType : FileTypeResult | undefined = await fileTypeFromBuffer(req.body);
+    if (!fileType) return res.json(new Reply(400, false, {message: "Request body must be an image file in binary form"}));
+
+    let randomName = `${Math.floor(Math.random() * 1000000)}.${fileType.ext}`;
+    let Quarks = db.getQuarks();
+    // Find the quark
+    Quarks.findOne({ _id: req.params.id, owners: res.locals.user._id }, (err, quark) => {
+        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found, or you are not an owner"));
+        let formData = new FormData();
+        // Write temp file
+        fs.writeFileSync(`/share/wcloud/${randomName}`, req.body);
+        formData.append("upload", fs.createReadStream(`/share/wcloud/${randomName}`));
+        // Upload to Wanderer's Cloud
+        formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
+            if (err) return res.json(new ServerErrorReply());
+            response.resume()
+            response.once("data", (data) => {
+                let dataString = data.toString().trim();
+                quark.iconUri = dataString;
+                // Save changes
+                quark.save((err) => {
+                    if (err) return res.json(new ServerErrorReply());
+                    res.json(new Reply(200, true, {message: "Quark icon has been updated", icon: dataString}));
+                })
+            })
+            response.once("end", () => {
+                if (!fileType) return;
+                // Delete temp file
+                fs.unlinkSync(`/share/wcloud/${randomName}`);
+            })
+        })
+    })
+})
+
+
+/**
+ * Reset the quark icon to the default icon.
+ */
+router.delete("/:id/icon", Auth, (req, res) => {
+    // Validate the quark id
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
+
+    // Find the quark and reset the icon
+    let Quarks = db.getQuarks();
+    Quarks.findOne({_id: req.params.id, owners: res.locals.user._id}, (err, quark) => {
+        if (err) {
+            console.error(err);
+            return res.json(new ServerErrorReply());
+        }
+        if (!quark) return res.status(404).json(new InvalidReplyMessage("Quark not found or you are not an owner"));
+        let oldIcon = quark.iconUri;
+        if (quark.iconUri === "https://lq.litdevs.org/default.webp") return res.status(400).json(new InvalidReplyMessage("Quark already has the default icon"));
+        quark.iconUri = "https://lq.litdevs.org/default.webp"; // Default icon
+        quark.save((err) => {
+            if (err) {
+                console.error(err);
+                return res.json(new ServerErrorReply());
+            }
+            axios.delete(`https://wanderers.cloud/file/${oldIcon.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
+                res.json(new Reply(200, true, {message: "Quark icon has been reset", icon: "https://lq.litdevs.org/default.webp"}));
+            })
+        })
     })
 })
 

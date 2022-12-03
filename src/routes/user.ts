@@ -30,8 +30,9 @@ router.put("/me/avatar", Auth, async (req, res) => {
     let fileType : FileTypeResult | undefined = await fileTypeFromBuffer(req.body);
     if (!fileType) return res.json(new Reply(400, false, {message: "Request body must be an image file in binary form"}));
     let formData = new FormData();
-    fs.writeFileSync(`/share/wcloud/tmp.${fileType.ext}`, req.body);
-    formData.append("upload", fs.createReadStream(`/share/wcloud/tmp.${fileType.ext}`));
+    let randomName = `${Math.floor(Math.random() * 1000000)}.${fileType.ext}`;
+    fs.writeFileSync(`/share/wcloud/${randomName}`, req.body);
+    formData.append("upload", fs.createReadStream(`/share/wcloud/${randomName}`));
     formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
         if (err) return res.json(new ServerErrorReply());
         response.resume()
@@ -45,7 +46,7 @@ router.put("/me/avatar", Auth, async (req, res) => {
         })
         response.once("end", () => {
             if (!fileType) return;
-            fs.unlinkSync(`/share/wcloud/tmp.${fileType.ext}`);
+            fs.unlinkSync(`/share/wcloud/${randomName}`);
         })
     })
 });
@@ -57,7 +58,10 @@ router.put("/me/avatar", Auth, async (req, res) => {
 router.delete("/me/avatar", Auth, (req, res) => {
     let Avatars = db.getAvatars();
     Avatars.findOneAndDelete({userId: res.locals.user._id}, (err, avatar) => {
-        if (err) return res.json(new ServerErrorReply());
+        if (err) {
+            console.error(err);
+            return res.json(new ServerErrorReply());
+        }
         if (!avatar) return res.status(400).json(new InvalidReplyMessage("You do not have an avatar to delete"));
         axios.delete(`https://wanderers.cloud/file/${avatar.avatarUri.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
             res.json(new Reply(200, true, {message: "Your avatar has been reset", avatar: `https://auth.litdevs.org/api/avatar/bg/${res.locals.user._id}`}));
