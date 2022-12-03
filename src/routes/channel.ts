@@ -168,4 +168,151 @@ router.post("/create", Auth, (req, res) => {
     })
 })
 
+router.get("/:id/messages", Auth, async (req, res) => {
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
+
+    try {
+        let canRead = await isPermittedToRead(req.params.id, res.locals.user._id);
+        if (!canRead) return res.status(403).json(new ForbiddenReply("You do not have permission to read this channel"));
+        let messages = db.getMessages();
+        // Optionally client can provide a timestamp to get messages before
+        let startTimestamp = Date.now();
+        if (req.query.startTimestamp) startTimestamp = Number(req.query.startTimestamp)
+        if (isNaN(startTimestamp)) return res.status(400).json(new InvalidReplyMessage("Invalid startTimestamp"));
+
+        let query = messages.find({ channelId: req.params.id, timestamp: { $lt: startTimestamp } }).sort({ timestamp: -1 });
+        query.limit(50);
+        query.then((messages) => {
+            res.json(new Reply(200, true, {message: "Here are the messages", messages}));
+        })
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json(new ServerErrorReply());
+    }
+})
+
+router.post("/:id/messages", Auth, async (req, res) => {
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
+    if (!req.body.content) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
+    if (req.body.content.trim().length > 2000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 2000 characters"}));
+
+    try {
+        let canWrite = await isPermittedToWrite(req.params.id, res.locals.user._id);
+        if (!canWrite) return res.status(403).json(new ForbiddenReply("You do not have permission to send messages to this channel"));
+        let Message = db.getMessages();
+        let message = new Message({
+            _id: new mongoose.Types.ObjectId(),
+            channelId: req.params.id,
+            authorId: res.locals.user._id,
+            content: req.body.content.trim(),
+            timestamp: Date.now()
+        })
+        message.save((err) => {
+            if (err) throw err;
+            res.json(new Reply(200, true, {message}));
+        })
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json(new ServerErrorReply());
+    }
+
+})
+
+/**
+ * Delete a message
+ */
+router.delete("/:id/messages/:messageId", Auth, (req, res) => {
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
+    if (!req.params.messageId) return res.status(400).json(new InvalidReplyMessage("Provide a message id"));
+    if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
+
+    // Find message
+    let Messages = db.getMessages();
+    Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, (err, message) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json(new ServerErrorReply());
+        }
+        if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
+        // Does author match
+        if (message.authorId.toString() !== res.locals.user._id.toString()) return res.status(403).json(new ForbiddenReply("You do not have permission to delete this message"));
+        // Send pipe bomb
+        Messages.deleteOne({ _id: req.params.messageId }, (err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json(new ServerErrorReply());
+            }
+            // Return success
+            res.json(new Reply(200, true, {message: "Message deleted"}));
+        })
+    })
+})
+
+/**
+ * Edit a message
+ */
+router.patch("/:id/messages/:messageId", Auth, (req, res) => {
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
+    if (!req.params.messageId) return res.status(400).json(new InvalidReplyMessage("Provide a message id"));
+    if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
+    if (!req.body.content) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
+    if (req.body.content.trim().length > 2000) return res.status(400).json(new InvalidReplyMessage("Message content must be less than 2000 characters"));
+
+    // Find message
+    let Messages = db.getMessages();
+    Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, (err, message) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json(new ServerErrorReply());
+        }
+        if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
+        // Does author match
+        if (message.authorId.toString() !== res.locals.user._id.toString()) return res.status(403).json(new ForbiddenReply("You do not have permission to edit this message"));
+        // Send pipe bomb
+        message.content = req.body.content.trim();
+        message.save((err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json(new ServerErrorReply());
+            }
+            // Return success
+            res.json(new Reply(200, true, {message}));
+        })
+    })
+})
+
+/**
+ * Check if a user has permission to read a channel
+ * @param channelId
+ * @param userId
+ */
+const isPermittedToRead = (channelId, userId) => {
+    return new Promise((resolve, reject) => {
+        let Quarks = db.getQuarks();
+        Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) }, (err, quark) => {
+            if (err) return reject(err);
+            resolve(!!quark);
+        });
+    })
+}
+
+/**
+ * Check if a user has permission to send messages to a channel
+ * @param channelId
+ * @param userId
+ */
+const isPermittedToWrite = (channelId, userId) => {
+    return new Promise((resolve, reject) => {
+        let Quarks = db.getQuarks();
+        Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) }, (err, quark) => {
+            if (err) return reject(err);
+            resolve(!!quark);
+        });
+    })
+}
+
 export default router;
