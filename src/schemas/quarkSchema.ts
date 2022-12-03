@@ -4,6 +4,11 @@ export default new Mongoose.Schema({
     _id: Mongoose.Types.ObjectId,
     members: Array,
     name: String,
-    iconUri: String
-
+    iconUri: String,
+    emotes: Array,
+    roles: Array,
+    bans: Array,
+    channels: Array,
+    invite: { type: String, unique: true },
+    owners: Array
 });

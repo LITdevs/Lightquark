@@ -7,6 +7,9 @@ import {fileTypeFromBuffer, FileTypeResult} from 'file-type';
 import { Auth } from './auth.js';
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
 import {isUint8Array} from "util/types";
+import axios from "axios";
+import ForbiddenReply from "../classes/reply/ForbiddenReply.js";
+import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
 
 const router: Router = express.Router();
 
@@ -35,9 +38,9 @@ router.put("/me/avatar", Auth, async (req, res) => {
         response.once("data", (data) => {
             let dataString = data.toString().trim();
             let Avatars = db.getAvatars();
-            Avatars.findOneAndUpdate({userId: res.locals.user._id}, {avatarUri: dataString}, {upsert: true}, (err, avatar) => {
+            Avatars.findOneAndUpdate({userId: res.locals.user._id}, {avatarUri: dataString}, {upsert: true}, (err) => {
                 if (err) return res.json(new ServerErrorReply());
-                res.json(new Reply(200, true, {message: "Your avatar has been updated", avatar: avatar.avatarUri}));
+                res.json(new Reply(200, true, {message: "Your avatar has been updated", avatar: dataString}));
             })
         })
         response.once("end", () => {
@@ -53,9 +56,54 @@ router.put("/me/avatar", Auth, async (req, res) => {
  */
 router.delete("/me/avatar", Auth, (req, res) => {
     let Avatars = db.getAvatars();
-    Avatars.findOneAndDelete({userId: res.locals.user._id}, (err) => {
+    Avatars.findOneAndDelete({userId: res.locals.user._id}, (err, avatar) => {
         if (err) return res.json(new ServerErrorReply());
-        res.json(new Reply(200, true, {message: "Your avatar has been reset", avatar: `https://auth.litdevs.org/api/avatar/bg/${res.locals.user._id}`}));
+        if (!avatar) return res.status(400).json(new InvalidReplyMessage("You do not have an avatar to delete"));
+        axios.delete(`https://wanderers.cloud/file/${avatar.avatarUri.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
+            res.json(new Reply(200, true, {message: "Your avatar has been reset", avatar: `https://auth.litdevs.org/api/avatar/bg/${res.locals.user._id}`}));
+        })
+    })
+})
+
+/**
+ * Find a user by their ID
+ * @param req.params.id The ID of the user to find
+ */
+router.get("/:id", Auth, (req, res) => {
+    let Users = db.getLoginUsers();
+    // Find the user by their ID
+    Users.findOne({_id: req.params.id}, (err, user) => {
+        if (err) {
+            console.error(err)
+            return res.status(500).json(new ServerErrorReply());
+        }
+        if (!user) return res.json(new Reply(404, false, {message: "User not found"}));
+        let Quarks = db.getQuarks();
+        // Make sure the users share a quark
+        console.log(user._id)
+        console.log(res.locals.user._id)
+        Quarks.findOne({members: {$all: [req.params.id, res.locals.user._id]}}, (err, quark) => {
+            if (err) {
+                console.error(err)
+                return res.status(500).json(new ServerErrorReply());
+            }
+            if (!quark) return res.status(403).json(new ForbiddenReply("You are not in a quark with this user"));
+            let Avatars = db.getAvatars();
+            // Find the avatar of the user
+            Avatars.findOne({userId: user._id}, (err, avatar) => {
+                if (err) {
+                    console.error(err)
+                    return res.status(500).json(new ServerErrorReply());
+                }
+                if (!avatar) avatar = { avatarUri: `https://auth.litdevs.org/api/avatar/bg/${user._id}`};
+                let safeUser = {
+                    _id: user._id,
+                    username: user.username,
+                    avatarUri: avatar.avatarUri
+                }
+                res.json(new Reply(200, true, {message: "User found", user: safeUser}));
+            })
+        })
     })
 })
 

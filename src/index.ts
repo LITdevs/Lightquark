@@ -23,9 +23,12 @@ app.use((req, res, next) => {
 import auth from './routes/auth.js';
 import user from './routes/user.js';
 import quark from './routes/quark.js';
+import channel from './routes/channel.js';
 app.use("/v1/auth", auth);
 app.use("/v1/user", user);
 app.use("/v1/quark", quark);
+app.use("/v1/channel", channel);
+app.use("/", express.static("public"));
 
 app.get("/v1/ping", (req : Request, res : Response) => {
     res.contentType("text/plain");
