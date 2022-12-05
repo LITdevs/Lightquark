@@ -207,6 +207,7 @@ router.post("/:id/messages", Auth, async (req, res) => {
             channelId: req.params.id,
             authorId: res.locals.user._id,
             content: req.body.content.trim(),
+            ua: req.headers['user-agent'].toString(),
             timestamp: Date.now()
         })
         message.save((err) => {
