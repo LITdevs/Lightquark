@@ -5,5 +5,6 @@ export default new Mongoose.Schema({
     authorId: Mongoose.Types.ObjectId,
     content: String,
     channelId: Mongoose.Types.ObjectId,
+    ua: String,
     timestamp: Number
 });
