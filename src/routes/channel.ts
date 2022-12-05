@@ -202,7 +202,7 @@ router.post("/:id/messages", Auth, async (req, res) => {
         let canWrite = await isPermittedToWrite(req.params.id, res.locals.user._id);
         if (!canWrite) return res.status(403).json(new ForbiddenReply("You do not have permission to send messages to this channel"));
         let Message = db.getMessages();
-        let ua = req.headers['user-agent'];
+        let ua = req.headers['lq-agent'];
         if (!ua) ua = "Unknown";
         let message = new Message({
             _id: new mongoose.Types.ObjectId(),
