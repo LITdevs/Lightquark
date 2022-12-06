@@ -1,14 +1,11 @@
 import express, {Request, Response} from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
-import bodyParser from 'body-parser';
-//import expressWs from 'express-ws';
 import db from "./db.js";
 const app = express();
-//const ews = expressWs(app)
 
 // Parse JSON bodies
-app.use(express.json());
+app.use(express.json({ limit: '250mb' }));
 // Parse binary bodies
 app.use(express.raw({type: 'image/*', limit: '10mb'}));
 
@@ -24,10 +21,12 @@ import auth from './routes/auth.js';
 import user from './routes/user.js';
 import quark from './routes/quark.js';
 import channel from './routes/channel.js';
+import gateway from './routes/gateway.js';
 app.use("/v1/auth", auth);
 app.use("/v1/user", user);
 app.use("/v1/quark", quark);
 app.use("/v1/channel", channel);
+app.use("/v1/gateway", gateway);
 app.use("/", express.static("public"));
 
 app.get("/v1/ping", (req : Request, res : Response) => {
@@ -54,11 +53,3 @@ db.dbEvents.on("login_ready", () => {
         console.info(`App listening on ${port}`);
     })
 })
-
-/**
- * Get the express-ws instance
- * @returns ews - express-ws instance
- * /
-export function getEws() {
-    return ews;
-}*/

@@ -70,6 +70,28 @@ router.post("/create", Auth, (req, res) => {
     })
 })
 
+router.post("/:id/leave", Auth, (req, res) => {
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
+    let Quark = db.getQuarks();
+    Quark.findOne({_id: req.params.id, members: res.locals.user._id}, (err, quark) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json(new ServerErrorReply());
+        }
+        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
+        if (quark.owners.includes(res.locals.user._id)) return res.status(400).json(new Reply(400, false, {message: "You cannot leave a quark you own"}));
+        quark.members = quark.members.filter((member) => member.toString() !== res.locals.user._id.toString());
+        quark.save((err) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json(new ServerErrorReply());
+            }
+            res.json(new Reply(200, true, {message: "You have left the quark"}));
+        })
+    })
+})
+
 /**
  * Respond 400 if no quark id is provided
  */
@@ -113,7 +135,19 @@ router.get("/:id", Auth, (req, res) => {
             return res.status(500).json(new ServerErrorReply());
         }
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
-        res.json(new Reply(200, true, {message: "Here is the quark", quark}));
+        let Channels = db.getChannels();
+        Channels.find({ quark: quark._id }, (err, channels) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json(new ServerErrorReply());
+            }
+            quark.channels = quark.channels.map((channel) => {
+                let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
+                if (foundChannel) channel = foundChannel;
+                return channel;
+            })
+            res.json(new Reply(200, true, {message: "Here is the quark", quark}));
+        })
     })
 })
 
@@ -252,29 +286,52 @@ router.patch("/:id", Auth, (req, res) => {
             if (req.body.name.length > 64) return res.status(400).json(new Reply(400, false, {message: "Name must be less than 64 characters"}));
             quark.name = req.body.name.trim();
         }
+        // Update owner list
+        if (req.body.owners) {
+            if (!Array.isArray(req.body.owners)) return res.status(400).json(new Reply(400, false, {message: "Owners must be an array"}));
+            let stop = false;
+            let erMsg = "";
+            req.body.owners.forEach((owner) => {
+                if (!stop) {
+                    if (!mongoose.isValidObjectId(owner)) {
+                        stop = true
+                        return erMsg = `${owner} is not a valid user id`;
+                    }
+                    if (!quark.members.includes(owner)) {
+                        stop = true;
+                        return erMsg = `${owner} is not a member of this quark`;
+                    }
+                }
+            })
+            if (stop) return res.status(400).json(new InvalidReplyMessage(erMsg));
+            quark.owners = req.body.owners;
+        }
+        const finishUpdate = () => {
+            // Save the quark
+            quark.save((err) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json(new ServerErrorReply());
+                }
+                res.json(new Reply(200, true, {message: "Quark updated", quark}));
+            });
+        }
         // Update invite
         if (req.body.invite) {
             req.body.invite = req.body.invite.replace(/[^A-Za-z0-9-_.]/g, "-").toLowerCase();
             if (req.body.invite.trim().length > 16) return res.status(400).json(new Reply(400, false, {message: "Invite must be less than 16 characters"}));
-            quark.invite = req.body.invite.trim();
-        }
-        // Update owner list
-        if (req.body.owners) {
-            if (!Array.isArray(req.body.owners)) return res.status(400).json(new Reply(400, false, {message: "Owners must be an array"}));
-            req.body.owners.forEach((owner) => {
-                if (!mongoose.isValidObjectId(owner)) return res.status(400).json(new Reply(400, false, {message: `${owner} is not a valid user id`}));
-                if (!quark.members.includes(owner)) return res.status(400).json(new Reply(400, false, {message: `${owner} is not a member of this quark`}));
+            quark.invite = req.body.invite;
+            Quarks.findOne({invite: req.body.invite}, (err, inviteQuark) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json(new ServerErrorReply());
+                }
+                if (inviteQuark) return res.status(400).json(new InvalidReplyMessage("Invite already in use"));
+                finishUpdate();
             })
-            quark.owners = req.body.owners;
+        } else {
+            finishUpdate();
         }
-        // Save the quark
-        quark.save((err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json(new ServerErrorReply());
-            }
-            res.json(new Reply(200, true, {message: "Quark updated", quark}));
-        });
     })
 })
 

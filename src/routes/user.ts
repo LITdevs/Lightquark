@@ -84,8 +84,6 @@ router.get("/:id", Auth, (req, res) => {
         if (!user) return res.json(new Reply(404, false, {message: "User not found"}));
         let Quarks = db.getQuarks();
         // Make sure the users share a quark
-        console.log(user._id)
-        console.log(res.locals.user._id)
         Quarks.findOne({members: {$all: [req.params.id, res.locals.user._id]}}, (err, quark) => {
             if (err) {
                 console.error(err)

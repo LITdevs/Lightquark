@@ -8,6 +8,10 @@ import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
 import {isValidObjectId} from "mongoose";
 import NotFoundReply from "../classes/reply/NotFoundReply.js";
 import ForbiddenReply from "../classes/reply/ForbiddenReply.js";
+import {fileTypeFromBuffer, FileTypeResult} from "file-type";
+import fs from "fs";
+import FormData from "form-data";
+import axios from "axios";
 
 const router: Router = express.Router();
 
@@ -193,29 +197,80 @@ router.get("/:id/messages", Auth, async (req, res) => {
 })
 
 router.post("/:id/messages", Auth, async (req, res) => {
-    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
-    if (!req.body.content) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
-    if (req.body.content.trim().length > 2000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 2000 characters"}));
-
     try {
+        if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
+        if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
+        if (!req.body.content && !req.body.attachments) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
+        if (req.body.content.trim().length > 2000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 2000 characters"}));
+        if (req.body.attachments && !Array.isArray(req.body.attachments)) return res.status(400).json(new InvalidReplyMessage("Attachments must be an array"));
+        if (req.body.attachments && req.body.attachments.length > 10) return res.status(400).json(new Reply(400, false, {message: "You can only attach 10 files per message"}));
         let canWrite = await isPermittedToWrite(req.params.id, res.locals.user._id);
         if (!canWrite) return res.status(403).json(new ForbiddenReply("You do not have permission to send messages to this channel"));
         let Message = db.getMessages();
         let ua = req.headers['lq-agent'];
         if (!ua) ua = "Unknown";
-        let message = new Message({
-            _id: new mongoose.Types.ObjectId(),
-            channelId: req.params.id,
-            authorId: res.locals.user._id,
-            content: req.body.content.trim(),
-            ua: String(ua),
-            timestamp: Date.now()
-        })
-        message.save((err) => {
-            if (err) throw err;
-            res.json(new Reply(200, true, {message}));
-        })
+
+        const postMessage = (attachments?: string[]) => {
+            let message = new Message({
+                _id: new mongoose.Types.ObjectId(),
+                channelId: req.params.id,
+                authorId: res.locals.user._id,
+                content: req.body.content ? req.body.content.trim() : "",
+                ua: String(ua),
+                timestamp: Date.now(),
+                attachments: attachments || []
+            })
+            message.save((err) => {
+                if (err) throw err;
+                res.json(new Reply(200, true, {message}));
+            })
+        }
+
+        // Process attachments
+        if (req.body.attachments && req.body.attachments.length > 0) {
+            // Upload files to cloud
+            let formData = new FormData();
+            let files : string[] = [];
+            let s = false; // If an error occurs, this will be set to true
+            // Loop through each attachment
+            for (const attachment of req.body.attachments) {
+                if (s) break;
+                // Turn base64 string into buffer
+                let fileBuffer = Buffer.from(attachment, "base64");
+                if (fileBuffer.length > 26214400) return s = true;
+                // Get file type
+                let fileType : FileTypeResult | undefined | { ext: string, mime: string } = await fileTypeFromBuffer(fileBuffer);
+                if (!fileType) fileType = { ext: "txt", mime: "application/octet-stream" };
+                // Save temporary file to disk
+                let randomName = `${Math.floor(Math.random() * 1000000)}.${fileType.ext}`;
+                fs.writeFileSync(`/share/wcloud/${randomName}`, fileBuffer);
+                formData.append(`${Math.floor(Math.random() * 1000000)}`, fs.createReadStream(`/share/wcloud/${randomName}`));
+                files.push(randomName);
+            }
+            if (s) return res.status(413).json(new Reply(413, false, {message: "One or more attachments are too large. Max size is 25MB", cat: "https://http.cat/413"}));
+            // Actually upload files
+            formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
+                if (err) return res.json(new ServerErrorReply());
+                response.resume()
+                response.once("data", (data) => {
+                    try {
+                        let dataString = data.toString().trim();
+                        if (files.length === 1) postMessage([dataString]) // If there is only one file, only the url is returned
+                        else postMessage(JSON.parse(dataString)); // If there are multiple files, an array of urls is returned
+                    } catch (e) {
+                        console.error(e);
+                        return res.json(new ServerErrorReply());
+                    }
+                })
+                response.once("end", () => {
+                    files.forEach((file) => {
+                        fs.unlinkSync(`/share/wcloud/${file}`);
+                    })
+                })
+            })
+        } else {
+            postMessage();
+        }
     } catch (e) {
         console.error(e);
         return res.status(500).json(new ServerErrorReply());
@@ -248,8 +303,19 @@ router.delete("/:id/messages/:messageId", Auth, (req, res) => {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
             }
-            // Return success
-            res.json(new Reply(200, true, {message: "Message deleted"}));
+            const done = () => {
+                res.json(new Reply(200, true, {message: "Message deleted"}));
+            }
+            // Delete attachments
+            if (message.attachments.length === 0) return done();
+            done();
+            message.attachments.forEach((attachment) => {
+                axios.delete(`https://wanderers.cloud/file/${attachment.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}})
+                    .catch((e) => {
+                        // This is internal cleanup, so we don't need to tell the user if something goes wrong
+                        console.error(e);
+                    });
+            })
         })
     })
 })
@@ -264,7 +330,7 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
     if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
     if (!req.body.content) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
     if (req.body.content.trim().length > 2000) return res.status(400).json(new InvalidReplyMessage("Message content must be less than 2000 characters"));
-
+    if (req.body.attachments) return res.status(400).json(new InvalidReplyMessage("Attachments cannot be edited"));
     // Find message
     let Messages = db.getMessages();
     Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, (err, message) => {
@@ -277,6 +343,7 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
         if (message.authorId.toString() !== res.locals.user._id.toString()) return res.status(403).json(new ForbiddenReply("You do not have permission to edit this message"));
         // Send pipe bomb
         message.content = req.body.content.trim();
+        message.edited = true;
         message.save((err) => {
             if (err) {
                 console.error(err);

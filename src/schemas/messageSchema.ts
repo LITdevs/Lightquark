@@ -5,6 +5,8 @@ export default new Mongoose.Schema({
     authorId: Mongoose.Types.ObjectId,
     content: String,
     channelId: Mongoose.Types.ObjectId,
-    ua: String,
-    timestamp: Number
+    ua: { type: String, default: "Unknown" },
+    timestamp: Number,
+    edited: { type: Boolean, default: false },
+    attachments: [String]
 });
