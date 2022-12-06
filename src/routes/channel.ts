@@ -12,6 +12,7 @@ import {fileTypeFromBuffer, FileTypeResult} from "file-type";
 import fs from "fs";
 import FormData from "form-data";
 import axios from "axios";
+import {subscriptionListener} from "./gateway.js";
 
 const router: Router = express.Router();
 
@@ -83,6 +84,14 @@ router.delete("/:id", Auth, (req, res) => {
                     }
                     // Return success
                     res.json(new Reply(200, true, {message: "Channel deleted"}));
+
+                    // Send delete event
+                    let data = {
+                        eventId: "channelDelete",
+                        channel: channel,
+                        quark: quark
+                    }
+                    subscriptionListener.emit("event", `quark_${channel.quark}` , data);
                 })
             })
         })
@@ -128,6 +137,13 @@ router.patch("/:id", Auth, (req, res) => {
                     return res.status(500).json(new ServerErrorReply());
                 }
                 res.json(new Reply(200, true, {message: "Channel updated", channel}));
+                // Send update event
+                let data = {
+                    eventId: "channelUpdate",
+                    channel: channel,
+                    quark: quark
+                }
+                subscriptionListener.emit("event", `quark_${channel.quark}` , data);
             });
         })
     })
@@ -167,6 +183,13 @@ router.post("/create", Auth, (req, res) => {
                     return res.status(500).json(new ServerErrorReply());
                 }
                 res.json(new Reply(200, true, {message: "Channel created", channel}));
+                // Send create event
+                let data = {
+                    eventId: "channelCreate",
+                    channel: channel,
+                    quark: quark
+                }
+                subscriptionListener.emit("event", `quark_${channel.quark}` , data);
             })
         })
     })
@@ -187,7 +210,19 @@ router.get("/:id/messages", Auth, async (req, res) => {
 
         let query = messages.find({ channelId: req.params.id, timestamp: { $lt: startTimestamp } }).sort({ timestamp: -1 });
         query.limit(50);
-        query.then((messages) => {
+        query.then(async (messages) => {
+            for (let i = 0; i < messages.length; i++) {
+                messages[i] = { message: messages[i], author: await getUser(messages[i].authorId) };
+                try {
+                    let ua = JSON.parse(messages[i].message.ua);
+                    messages[i].message.ua = ua.name;
+                } catch (e) {
+                    // Ignore error, just let it be.
+                    // This is the default behaviour
+                    // A certain client sends the user agent as a bit of JSON, which messes with all the other ones
+                    // So we will try to parse it and return the correct value.
+                }
+            }
             res.json(new Reply(200, true, {message: "Here are the messages", messages}));
         })
     } catch (e) {
@@ -223,6 +258,18 @@ router.post("/:id/messages", Auth, async (req, res) => {
             message.save((err) => {
                 if (err) throw err;
                 res.json(new Reply(200, true, {message}));
+                // Send create event
+                let author = {
+                    _id: res.locals.user._id,
+                    username: res.locals.user.username,
+                    avatarUri: res.locals.user.avatar
+                }
+                let data = {
+                    eventId: "messageCreate",
+                    message: message,
+                    author: author
+                }
+                subscriptionListener.emit("event", `channel_${message.channelId}` , data);
             })
         }
 
@@ -305,6 +352,12 @@ router.delete("/:id/messages/:messageId", Auth, (req, res) => {
             }
             const done = () => {
                 res.json(new Reply(200, true, {message: "Message deleted"}));
+                // Send delete event
+                let data = {
+                    eventId: "messageDelete",
+                    message: message
+                }
+                subscriptionListener.emit("event", `channel_${message.channelId}` , data);
             }
             // Delete attachments
             if (message.attachments.length === 0) return done();
@@ -330,7 +383,7 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
     if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
     if (!req.body.content) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
     if (req.body.content.trim().length > 2000) return res.status(400).json(new InvalidReplyMessage("Message content must be less than 2000 characters"));
-    if (req.body.attachments) return res.status(400).json(new InvalidReplyMessage("Attachments cannot be edited"));
+    if (req.body.attachments) return res.status(501).json(new Reply(501, false, { message: "Attachments cannot be edited yet" }));
     // Find message
     let Messages = db.getMessages();
     Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, (err, message) => {
@@ -351,6 +404,12 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
             }
             // Return success
             res.json(new Reply(200, true, {message}));
+            // Send edit event
+            let data = {
+                eventId: "messageUpdate",
+                message: message
+            }
+            subscriptionListener.emit("event", `channel_${message.channelId}` , data);
         })
     })
 })
@@ -365,6 +424,7 @@ const isPermittedToRead = (channelId, userId) => {
         let Quarks = db.getQuarks();
         Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) }, (err, quark) => {
             if (err) return reject(err);
+            // DO NOT CONSOLE.LOG THIS
             resolve(!!quark);
         });
     })
@@ -385,4 +445,20 @@ const isPermittedToWrite = (channelId, userId) => {
     })
 }
 
+const getUser = async (userId) => {
+    let Users = db.getLoginUsers();
+    let user = await Users.findOne({ _id: userId });
+    if (!user) return null;
+    let Avatars = db.getAvatars();
+    let avatar = await Avatars.findOne({ userId: user._id });
+    let avatarUri = avatar ? avatar.avatarUri : null;
+    if (!avatarUri) avatarUri = `https://auth.litdevs.org/api/avatar/bg/${user._id}`;
+    return {
+        _id: user._id,
+        username: user.username,
+        avatar: avatarUri
+    };
+}
+
+export { isPermittedToRead, isPermittedToWrite };
 export default router;

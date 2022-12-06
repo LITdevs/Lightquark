@@ -10,6 +10,7 @@ import {isUint8Array} from "util/types";
 import axios from "axios";
 import ForbiddenReply from "../classes/reply/ForbiddenReply.js";
 import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
+import {subscriptionListener} from "./gateway.js";
 
 const router: Router = express.Router();
 
@@ -42,6 +43,7 @@ router.put("/me/avatar", Auth, async (req, res) => {
             Avatars.findOneAndUpdate({userId: res.locals.user._id}, {avatarUri: dataString}, {upsert: true}, (err) => {
                 if (err) return res.json(new ServerErrorReply());
                 res.json(new Reply(200, true, {message: "Your avatar has been updated", avatar: dataString}));
+                userUpdate(res.locals.user);
             })
         })
         response.once("end", () => {
@@ -65,6 +67,7 @@ router.delete("/me/avatar", Auth, (req, res) => {
         if (!avatar) return res.status(400).json(new InvalidReplyMessage("You do not have an avatar to delete"));
         axios.delete(`https://wanderers.cloud/file/${avatar.avatarUri.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
             res.json(new Reply(200, true, {message: "Your avatar has been reset", avatar: `https://auth.litdevs.org/api/avatar/bg/${res.locals.user._id}`}));
+            userUpdate(res.locals.user);
         })
     })
 })
@@ -108,5 +111,28 @@ router.get("/:id", Auth, (req, res) => {
         })
     })
 })
+
+/**
+ * Send memberUpdate event to all quarks the user is in
+ * @param user
+ */
+function userUpdate(user : any) {
+    let Quarks = db.getQuarks();
+    Quarks.find({members: user._id}, (err, quarks) => {
+        if (err) {
+            console.error(err);
+            return;
+        }
+        quarks.forEach((quark) => {
+            // Send update event
+            let data = {
+                eventId: "memberUpdate",
+                quark: quark,
+                user: { _id: user._id, username: user.username, avatarUri: user.avatar }
+            }
+            subscriptionListener.emit("event", `quark_${quark._id}` , data);
+        })
+    })
+}
 
 export default router;

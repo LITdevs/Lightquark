@@ -21,12 +21,10 @@ import auth from './routes/auth.js';
 import user from './routes/user.js';
 import quark from './routes/quark.js';
 import channel from './routes/channel.js';
-import gateway from './routes/gateway.js';
 app.use("/v1/auth", auth);
 app.use("/v1/user", user);
 app.use("/v1/quark", quark);
 app.use("/v1/channel", channel);
-app.use("/v1/gateway", gateway);
 app.use("/", express.static("public"));
 
 app.get("/v1/ping", (req : Request, res : Response) => {
@@ -47,9 +45,11 @@ app.patch("*", (req : Request, res : Response) => {
     res.status(403).end();
 })
 
+import gateway from './routes/gateway.js';
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
         console.info(`App listening on ${port}`);
     })
+    gateway(server);
 })

@@ -11,6 +11,7 @@ import {fileTypeFromBuffer, FileTypeResult} from "file-type";
 import FormData from "form-data";
 import fs from "fs";
 import axios from "axios";
+import {subscriptionListener} from "./gateway.js";
 
 const router: Router = express.Router();
 
@@ -88,6 +89,14 @@ router.post("/:id/leave", Auth, (req, res) => {
                 return res.status(500).json(new ServerErrorReply());
             }
             res.json(new Reply(200, true, {message: "You have left the quark"}));
+
+            // Send leave event
+            let data = {
+                eventId: "memberLeave",
+                quark: quark,
+                user: { _id: res.locals.user._id, username: res.locals.user.username, avatarUri: res.locals.user.avatar }
+            }
+            subscriptionListener.emit("event", `quark_${quark._id}` , data);
         })
     })
 })
@@ -118,6 +127,13 @@ router.delete("/:id", Auth, (req, res) => {
                 return res.status(500).json(new ServerErrorReply());
             }
             res.json(new Reply(200, true, {message: "Quark deleted"}));
+
+            // Send delete event
+            let data = {
+                eventId: "quarkDelete",
+                quark: quark
+            }
+            subscriptionListener.emit("event", `quark_${quark._id}` , data);
         })
     })
 })
@@ -187,6 +203,14 @@ router.post("/invite/:invite", Auth, (req, res) => {
                 return res.status(500).json(new ServerErrorReply());
             }
             res.json(new Reply(200, true, {message: "Joined quark", quark: inviteQuark}));
+
+            // Send update event
+            let data = {
+                eventId: "memberJoin",
+                quark: inviteQuark,
+                user: { _id: res.locals.user._id, username: res.locals.user.username, avatarUri: res.locals.user.avatar }
+            }
+            subscriptionListener.emit("event", `quark_${inviteQuark._id}` , data);
         });
     })
 })
@@ -223,6 +247,12 @@ router.put("/:id/icon", Auth, async (req, res) => {
                 quark.save((err) => {
                     if (err) return res.json(new ServerErrorReply());
                     res.json(new Reply(200, true, {message: "Quark icon has been updated", icon: dataString}));
+                    // Send update event
+                    let data = {
+                        eventId: "quarkUpdate",
+                        quark: quark
+                    }
+                    subscriptionListener.emit("event", `quark_${quark._id}` , data);
                 })
             })
             response.once("end", () => {
@@ -261,6 +291,13 @@ router.delete("/:id/icon", Auth, (req, res) => {
             }
             axios.delete(`https://wanderers.cloud/file/${oldIcon.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
                 res.json(new Reply(200, true, {message: "Quark icon has been reset", icon: "https://lq.litdevs.org/default.webp"}));
+
+                // Send update event
+                let data = {
+                    eventId: "quarkUpdate",
+                    quark: quark
+                }
+                subscriptionListener.emit("event", `quark_${quark._id}` , data);
             })
         })
     })
@@ -314,6 +351,13 @@ router.patch("/:id", Auth, (req, res) => {
                     return res.status(500).json(new ServerErrorReply());
                 }
                 res.json(new Reply(200, true, {message: "Quark updated", quark}));
+
+                // Send update event
+                let data = {
+                    eventId: "quarkUpdate",
+                    quark: quark
+                }
+                subscriptionListener.emit("event", `quark_${quark._id}` , data);
             });
         }
         // Update invite
