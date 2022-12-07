@@ -16,6 +16,7 @@ class Reply implements IReply {
             success: success
         };
         this.response = response;
+        this.response.cat = `https://http.cat/${statusCode}`;
     }
 }
 
