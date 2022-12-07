@@ -456,7 +456,7 @@ const getUser = async (userId) => {
     return {
         _id: user._id,
         username: user.username,
-        avatar: avatarUri
+        avatarUri: avatarUri
     };
 }
 
