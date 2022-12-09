@@ -262,7 +262,8 @@ router.post("/:id/messages", Auth, async (req, res) => {
                 let author = {
                     _id: res.locals.user._id,
                     username: res.locals.user.username,
-                    avatarUri: res.locals.user.avatar
+                    avatarUri: res.locals.user.avatar,
+                    admin: !!res.locals.user.admin
                 }
                 let data = {
                     eventId: "messageCreate",
@@ -456,7 +457,8 @@ const getUser = async (userId) => {
     return {
         _id: user._id,
         username: user.username,
-        avatarUri: avatarUri
+        avatarUri: avatarUri,
+        admin: !!user.admin
     };
 }
 
