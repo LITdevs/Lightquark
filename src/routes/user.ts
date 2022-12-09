@@ -104,7 +104,8 @@ router.get("/:id", Auth, (req, res) => {
                 let safeUser = {
                     _id: user._id,
                     username: user.username,
-                    avatarUri: avatar.avatarUri
+                    avatarUri: avatar.avatarUri,
+                    admin: !!user.admin
                 }
                 res.json(new Reply(200, true, {message: "User found", user: safeUser}));
             })
@@ -128,7 +129,7 @@ function userUpdate(user : any) {
             let data = {
                 eventId: "memberUpdate",
                 quark: quark,
-                user: { _id: user._id, username: user.username, avatarUri: user.avatar }
+                user: { _id: user._id, username: user.username, avatarUri: user.avatar, !!user.admin }
             }
             subscriptionListener.emit("event", `quark_${quark._id}` , data);
         })
