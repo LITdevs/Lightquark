@@ -129,7 +129,7 @@ function userUpdate(user : any) {
             let data = {
                 eventId: "memberUpdate",
                 quark: quark,
-                user: { _id: user._id, username: user.username, avatarUri: user.avatar, !!user.admin }
+                user: { _id: user._id, username: user.username, avatarUri: user.avatar, admin: !!user.admin }
             }
             subscriptionListener.emit("event", `quark_${quark._id}` , data);
         })
