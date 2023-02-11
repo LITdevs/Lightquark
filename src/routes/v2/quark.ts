@@ -1,11 +1,11 @@
 import express, {Request, Response, Router} from 'express';
-import Reply from "../classes/reply/Reply.js";
+import Reply from "../../classes/reply/Reply.js";
 import { Auth } from './auth.js';
-import db from "../db.js";
+import db from "../../db.js";
 import * as mongoose from "mongoose";
-import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
-import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
-import NotFoundReply from "../classes/reply/NotFoundReply.js";
+import ServerErrorReply from "../../classes/reply/ServerErrorReply.js";
+import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
+import NotFoundReply from "../../classes/reply/NotFoundReply.js";
 import {isUint8Array} from "util/types";
 import {fileTypeFromBuffer, FileTypeResult} from "file-type";
 import FormData from "form-data";
@@ -21,8 +21,27 @@ const router: Router = express.Router();
  */
 router.get("/me", Auth, (req, res) => {
     let Quarks = db.getQuarks();
-    Quarks.find({ members: res.locals.user._id}, (err, quarks) => {
+    Quarks.find({ members: res.locals.user._id}, async (err, quarks) => {
+        console.log(quarks)
         if (err) return res.status(500).json(new Reply(500, false, {message: "An error occurred while fetching quarks"}));
+        let Channels = db.getChannels();
+        const resolveChannels = async (quarkChannels, quarkId) => {
+            let channels = await Channels.find({ quark: quarkId })
+            let newChannels = await Promise.all(quarkChannels.map((channel) => {
+                let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
+                if (foundChannel) channel = foundChannel;
+                return channel;
+            }))
+            return newChannels;
+        }
+
+        quarks = await Promise.all(quarks.map(async (quark) => {
+            console.log(quark)
+            let inflatedChannels = await resolveChannels(quark.channels, quark._id);
+            quark.channels = inflatedChannels;
+            return quark;
+        }))
+
         res.json(new Reply(200, true, {message: "Here are the quarks you are a member of", quarks}));
     })
 });

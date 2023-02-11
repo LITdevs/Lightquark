@@ -1,12 +1,12 @@
 import express, {Request, Response, Router} from 'express';
-import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
-import db from "../db.js";
-import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
-import NotFoundReply from "../classes/reply/NotFoundReply.js";
+import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
+import db from "../../db.js";
+import ServerErrorReply from "../../classes/reply/ServerErrorReply.js";
+import NotFoundReply from "../../classes/reply/NotFoundReply.js";
 import crypto from 'crypto';
-import Reply from "../classes/reply/Reply.js";
+import Reply from "../../classes/reply/Reply.js";
 import * as jose from "jose";
-import UnauthorizedReply from "../classes/reply/UnauthorizedReply.js";
+import UnauthorizedReply from "../../classes/reply/UnauthorizedReply.js";
 
 const router: Router = express.Router();
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);

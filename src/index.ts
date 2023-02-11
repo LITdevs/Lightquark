@@ -17,15 +17,25 @@ app.use((req, res, next) => {
     next();
 })
 
-import auth from './routes/auth.js';
-import user from './routes/user.js';
-import quark from './routes/quark.js';
-import channel from './routes/channel.js';
+import auth from './routes/v1/auth.js';
+import user from './routes/v1/user.js';
+import quark from './routes/v1/quark.js';
+import channel from './routes/v1/channel.js';
 app.use("/v1/auth", auth);
 app.use("/v1/user", user);
 app.use("/v1/quark", quark);
 app.use("/v1/channel", channel);
 app.use("/", express.static("public"));
+import authv2 from './routes/v2/auth.js';
+import userv2 from './routes/v2/user.js';
+import quarkv2 from './routes/v2/quark.js';
+import channelv2 from './routes/v2/channel.js';
+import dmv2 from './routes/v2/dm.js';
+app.use("/v2/auth", authv2);
+app.use("/v2/user", userv2);
+app.use("/v2/quark", quarkv2);
+app.use("/v2/channel", channelv2);
+app.use("/v2/dm", dmv2);
 
 app.get("/v1/ping", (req : Request, res : Response) => {
     res.contentType("text/plain");
@@ -45,7 +55,7 @@ app.patch("*", (req : Request, res : Response) => {
     res.status(403).end();
 })
 
-import gateway from './routes/gateway.js';
+import gateway from './routes/v1/gateway.js';
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
     const server = app.listen(port, () => {

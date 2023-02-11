@@ -1,18 +1,18 @@
 import express, {Request, Response, Router} from 'express';
-import Reply from "../classes/reply/Reply.js";
+import Reply from "../../classes/reply/Reply.js";
 import { Auth } from './auth.js';
-import db from "../db.js";
+import db from "../../db.js";
 import * as mongoose from "mongoose";
-import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
-import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
+import ServerErrorReply from "../../classes/reply/ServerErrorReply.js";
+import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {isValidObjectId} from "mongoose";
-import NotFoundReply from "../classes/reply/NotFoundReply.js";
-import ForbiddenReply from "../classes/reply/ForbiddenReply.js";
-import {fileTypeFromBuffer, FileTypeResult} from "file-type";
+import NotFoundReply from "../../classes/reply/NotFoundReply.js";
+import ForbiddenReply from "../../classes/reply/ForbiddenReply.js";
 import fs from "fs";
 import FormData from "form-data";
 import axios from "axios";
 import {subscriptionListener} from "./gateway.js";
+import path from "path";
 
 const router: Router = express.Router();
 
@@ -213,15 +213,8 @@ router.get("/:id/messages", Auth, async (req, res) => {
         query.then(async (messages) => {
             for (let i = 0; i < messages.length; i++) {
                 messages[i] = { message: messages[i], author: await getUser(messages[i].authorId) };
-                try {
-                    let ua = JSON.parse(messages[i].message.ua);
-                    messages[i].message.ua = ua.name;
-                } catch (e) {
-                    // Ignore error, just let it be.
-                    // This is the default behaviour
-                    // A certain client sends the user agent as a bit of JSON, which messes with all the other ones
-                    // So we will try to parse it and return the correct value.
-                }
+                let ua = JSON.parse(messages[i].message.ua);
+                messages[i].message.ua = ua.name;
             }
             res.json(new Reply(200, true, {message: "Here are the messages", messages}));
         })
@@ -279,23 +272,24 @@ router.post("/:id/messages", Auth, async (req, res) => {
             // Upload files to cloud
             let formData = new FormData();
             let files : string[] = [];
-            let s = false; // If an error occurs, this will be set to true
+            let s = false; // If an error occurs, one of these will be set to true
+            let m = false;
             // Loop through each attachment
             for (const attachment of req.body.attachments) {
-                if (s) break;
+                if (typeof attachment !== "object") m = true;
+                if (!attachment.filename || !attachment.data) m = true;
+                if (s || m) break;
                 // Turn base64 string into buffer
-                let fileBuffer = Buffer.from(attachment, "base64");
+                let fileBuffer = Buffer.from(attachment.data, "base64");
                 if (fileBuffer.length > 26214400) return s = true;
-                // Get file type
-                let fileType : FileTypeResult | undefined | { ext: string, mime: string } = await fileTypeFromBuffer(fileBuffer);
-                if (!fileType) fileType = { ext: "txt", mime: "application/octet-stream" };
                 // Save temporary file to disk
-                let randomName = `${Math.floor(Math.random() * 1000000)}.${fileType.ext}`;
+                let randomName = `${Math.floor(Math.random() * 1000000)}${path.extname(attachment.filename)}`;
                 fs.writeFileSync(`/share/wcloud/${randomName}`, fileBuffer);
-                formData.append(`${Math.floor(Math.random() * 1000000)}`, fs.createReadStream(`/share/wcloud/${randomName}`));
+                formData.append(randomName, fs.createReadStream(`/share/wcloud/${randomName}`), { filename: attachment.filename});
                 files.push(randomName);
             }
             if (s) return res.status(413).json(new Reply(413, false, {message: "One or more attachments are too large. Max size is 25MB", cat: "https://http.cat/413"}));
+            if (m) return res.status(400).json(new InvalidReplyMessage("One or more attachments are malformed. Make sure you provide the filename and data properties in each object"));
             // Actually upload files
             formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
                 if (err) return res.json(new ServerErrorReply());

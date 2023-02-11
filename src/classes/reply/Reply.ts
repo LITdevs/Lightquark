@@ -3,12 +3,12 @@ interface IReply {
         status_code: number,
         success: boolean
     },
-    response: object
+    response: any
 }
 
 class Reply implements IReply {
     request: { status_code: number; success: boolean };
-    response: object;
+    response: any;
 
     constructor(statusCode: number, success: boolean, response: object) {
         this.request = {

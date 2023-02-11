@@ -1,10 +1,10 @@
 import { WebSocketServer } from "ws";
 import { WsAuth } from "./auth.js";
 import crypto from "crypto";
-import SubscriptionManager from "../classes/SubscriptionManager.js";
+import SubscriptionManager from "../../classes/SubscriptionManager.js";
 import EventEmitter from "events";
 import {isPermittedToRead} from "./channel.js";
-import db from "../db.js";
+import db from "../../db.js";
 
 // Create a new Subscription Manager and export it
 const sm = new SubscriptionManager();

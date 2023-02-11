@@ -1,15 +1,15 @@
 import express, {Request, Response, Router} from 'express';
-import db from "../db.js";
+import db from "../../db.js";
 import FormData from 'form-data';
 import fs from "fs";
-import Reply from "../classes/reply/Reply.js";
+import Reply from "../../classes/reply/Reply.js";
 import {fileTypeFromBuffer, FileTypeResult} from 'file-type';
 import { Auth } from './auth.js';
-import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
+import ServerErrorReply from "../../classes/reply/ServerErrorReply.js";
 import {isUint8Array} from "util/types";
 import axios from "axios";
-import ForbiddenReply from "../classes/reply/ForbiddenReply.js";
-import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
+import ForbiddenReply from "../../classes/reply/ForbiddenReply.js";
+import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {subscriptionListener} from "./gateway.js";
 
 const router: Router = express.Router();

@@ -65,10 +65,12 @@ export default class SubscriptionManager {
 
     unsubscribe(event : string, socketId) {
         if (this.validEvent(event) !== 1) return;
+        if (!this.subscriptions[event]) return;
         this.subscriptions[event] = this.subscriptions[event].filter(sub => sub.socketId !== socketId);
     }
     unsubscribeAll(socketId) {
         for (let event in this.subscriptions) {
+            if (!this.subscriptions[event]) return;
             this.subscriptions[event] = this.subscriptions[event].filter(sub => sub.socketId !== socketId);
         }
     }
