@@ -213,8 +213,15 @@ router.get("/:id/messages", Auth, async (req, res) => {
         query.then(async (messages) => {
             for (let i = 0; i < messages.length; i++) {
                 messages[i] = { message: messages[i], author: await getUser(messages[i].authorId) };
-                let ua = JSON.parse(messages[i].message.ua);
-                messages[i].message.ua = ua.name;
+                try {
+                    let ua = JSON.parse(messages[i].message.ua);
+                    messages[i].message.ua = ua.name;
+                } catch (e) {
+                    // Ignore error, just let it be.
+                    // This is the default behaviour
+                    // A certain client sends the user agent as a bit of JSON, which messes with all the other ones
+                    // So we will try to parse it and return the correct value.
+                }
             }
             res.json(new Reply(200, true, {message: "Here are the messages", messages}));
         })
@@ -246,7 +253,8 @@ router.post("/:id/messages", Auth, async (req, res) => {
                 content: req.body.content ? req.body.content.trim() : "",
                 ua: String(ua),
                 timestamp: Date.now(),
-                attachments: attachments || []
+                attachments: attachments || [],
+                specialAttributes: req.body.specialAttributes || []
             })
             message.save((err) => {
                 if (err) throw err;

@@ -22,7 +22,6 @@ const router: Router = express.Router();
 router.get("/me", Auth, (req, res) => {
     let Quarks = db.getQuarks();
     Quarks.find({ members: res.locals.user._id}, async (err, quarks) => {
-        console.log(quarks)
         if (err) return res.status(500).json(new Reply(500, false, {message: "An error occurred while fetching quarks"}));
         let Channels = db.getChannels();
         const resolveChannels = async (quarkChannels, quarkId) => {
@@ -36,7 +35,6 @@ router.get("/me", Auth, (req, res) => {
         }
 
         quarks = await Promise.all(quarks.map(async (quark) => {
-            console.log(quark)
             let inflatedChannels = await resolveChannels(quark.channels, quark._id);
             quark.channels = inflatedChannels;
             return quark;

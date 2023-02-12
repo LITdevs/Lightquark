@@ -66,7 +66,6 @@ async function handleMessage(message, ws, user, socketId) {
         let data = JSON.parse(message);
         if (data.event === "heartbeat") {
             if (!data.message) return ws.send(JSON.stringify({eventId: "error", message: "Missing message body", code: 400}));
-            console.log(data.message);
             sm.clientHeartbeat(socketId);
             ws.send(JSON.stringify({eventId: "heartbeat", message: `Still alive -GLaDOS probably. Message hash: ${crypto.createHash("sha1").update(data.message).digest("base64").substring(2,10)}`, code: 200}));
         }

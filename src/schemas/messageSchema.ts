@@ -8,5 +8,6 @@ export default new Mongoose.Schema({
     ua: { type: String, default: "Unknown" },
     timestamp: Number,
     edited: { type: Boolean, default: false },
-    attachments: [String]
+    attachments: [String],
+    specialAttributes: [String]
 });

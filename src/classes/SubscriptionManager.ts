@@ -76,7 +76,6 @@ export default class SubscriptionManager {
     }
 
     event(event : string, data) {
-        console.log(data);
         if (this.validEvent(event) !== 1) return;
         if (!this.subscriptions[event]) return;
         this.subscriptions[event].forEach(sub => {
