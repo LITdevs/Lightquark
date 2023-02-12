@@ -11,7 +11,7 @@ import ForbiddenReply from "../../classes/reply/ForbiddenReply.js";
 import fs from "fs";
 import FormData from "form-data";
 import axios from "axios";
-import {subscriptionListener} from "./gateway.js";
+import {subscriptionListener} from "../v1/gateway.js";
 import path from "path";
 
 const router: Router = express.Router();

@@ -10,7 +10,7 @@ import {isUint8Array} from "util/types";
 import axios from "axios";
 import ForbiddenReply from "../../classes/reply/ForbiddenReply.js";
 import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
-import {subscriptionListener} from "./gateway.js";
+import {subscriptionListener} from "../v1/gateway.js";
 
 const router: Router = express.Router();
 

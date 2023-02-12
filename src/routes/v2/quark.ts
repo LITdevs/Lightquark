@@ -11,7 +11,7 @@ import {fileTypeFromBuffer, FileTypeResult} from "file-type";
 import FormData from "form-data";
 import fs from "fs";
 import axios from "axios";
-import {subscriptionListener} from "./gateway.js";
+import {subscriptionListener} from "../v1/gateway.js";
 
 const router: Router = express.Router();
 
