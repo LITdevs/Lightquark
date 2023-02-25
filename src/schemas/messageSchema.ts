@@ -9,5 +9,5 @@ export default new Mongoose.Schema({
     timestamp: Number,
     edited: { type: Boolean, default: false },
     attachments: [String],
-    specialAttributes: [String]
+    specialAttributes: [Object]
 });

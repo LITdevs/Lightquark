@@ -37,9 +37,15 @@ app.use("/v2/quark", quarkv2);
 app.use("/v2/channel", channelv2);
 app.use("/v2/dm", dmv2);
 
+
 app.get("/v1/ping", (req : Request, res : Response) => {
     res.contentType("text/plain");
     res.send("pong");
+})
+
+app.get("/d/:quarkId/:channelId?/:messageId?", (req: Request, res: Response) => {
+    let lqLink = `lightquark://${req.params.quarkId}${req.params.channelId ? `/${req.params.channelId}`: ""}${req.params.messageId ? `/${req.params.messageId}`: ""}`
+    res.redirect(lqLink)
 })
 
 app.get("*", (req : Request, res : Response) => {

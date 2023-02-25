@@ -6,5 +6,6 @@ export default new Mongoose.Schema({
     email: {type: String, unique : true},
     salt: Buffer,
     username: String,
-    admin: Boolean
+    admin: Boolean,
+    isBot: {type: Boolean, default: false}
 });

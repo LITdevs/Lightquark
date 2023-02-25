@@ -120,6 +120,7 @@ router.patch("/:id", Auth, (req, res) => {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
             }
+            if (!quark) return res.status(404).json(new NotFoundReply("Editable quark not found"))
             if (!quark.owners.includes(res.locals.user._id)) return res.status(403).json(new Reply(403, false, {message: "You are not an owner of this quark"}));
             // Update name
             if (req.body.name) {

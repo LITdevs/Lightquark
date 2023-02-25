@@ -120,6 +120,7 @@ router.patch("/:id", Auth, (req, res) => {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
             }
+            if (!quark) return res.status(404).json(new NotFoundReply("Editable quark not found"))
             if (!quark.owners.includes(res.locals.user._id)) return res.status(403).json(new Reply(403, false, {message: "You are not an owner of this quark"}));
             // Update name
             if (req.body.name) {
@@ -235,8 +236,8 @@ router.post("/:id/messages", Auth, async (req, res) => {
     try {
         if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
-        if (!req.body.content && !req.body.attachments) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
-        if (req.body.content.trim().length > 2000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 2000 characters"}));
+        if ((!req.body.content || req.body.content.trim().length === 0) && (!req.body.attachments || req.body.attachments.length === 0)) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
+        if (req.body.content && req.body.content.trim().length > 2000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 2000 characters"}));
         if (req.body.attachments && !Array.isArray(req.body.attachments)) return res.status(400).json(new InvalidReplyMessage("Attachments must be an array"));
         if (req.body.attachments && req.body.attachments.length > 10) return res.status(400).json(new Reply(400, false, {message: "You can only attach 10 files per message"}));
         let canWrite = await isPermittedToWrite(req.params.id, res.locals.user._id);
@@ -244,6 +245,45 @@ router.post("/:id/messages", Auth, async (req, res) => {
         let Message = db.getMessages();
         let ua = req.headers['lq-agent'];
         if (!ua) ua = "Unknown";
+
+        const attributeCheck = async () => {
+            if (req.body.specialAttributes) {
+                let attributeAllowArray = await Promise.all(req.body.specialAttributes.map(async (attribute) => {
+                    let allAllowed = [
+                        "/me",
+                        "botMessage",
+                        "reply"
+                    ]
+                    let defaultAllowed = [
+                        "/me"
+                    ]
+
+                    if (typeof attribute !== "object") return false;
+                    if (defaultAllowed.includes(attribute.type)) return true;
+                    if (!allAllowed.includes(attribute.type)) return false;
+
+                    if (attribute.type === "botMessage") return !!res.locals.user.isBot;
+
+                    if (attribute.type === "reply") {
+                        try {
+                            if (!attribute.replyTo || !isValidObjectId(attribute.replyTo)) return false;
+                            let replyToMessage = await Message.findOne({ _id: attribute.replyTo, channelId: req.params.id})
+                            if (!replyToMessage) return false;
+                            return true;
+                        } catch (e) {
+                            console.error(e);
+                            return false;
+                        }
+                    }
+
+                }))
+                return !attributeAllowArray.includes(false)
+            } else {
+                return true;
+            }
+        }
+
+        if (!(await attributeCheck())) return res.json(new InvalidReplyMessage("Invalid attributes."))
 
         const postMessage = (attachments?: string[]) => {
             let message = new Message({

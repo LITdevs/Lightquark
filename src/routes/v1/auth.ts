@@ -51,12 +51,12 @@ router.post("/token", (req: Request, res: Response) => {
                 if (!avatarUri) {
                     avatarUri = `https://auth.litdevs.org/api/avatar/bg/${loginUser._id}`;
                 }
-                new jose.SignJWT({ admin: !!loginUser.admin, email: loginUser.email, username: loginUser.username, _id: loginUser._id, avatar: avatarUri })
+                new jose.SignJWT({ admin: !!loginUser.admin, isBot: !!loginUser.isBot, email: loginUser.email, username: loginUser.username, _id: loginUser._id, avatar: avatarUri })
                     .setProtectedHeader({ alg: 'HS256', typ: "JWT" })
                     .setIssuedAt()
                     .setIssuer('Lightquark')
                     .setAudience('Lightquark-client')
-                    .setExpirationTime('24h')
+                    .setExpirationTime('1y')
                     .sign(secret).then(jwt => {
                     return res.json(new Reply(200, true, { message: "Here are your tokens!", token_type: "Bearer", access_token: jwt }))
                 })
