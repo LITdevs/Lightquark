@@ -39,13 +39,14 @@ router.get("/me/nick/:scope", Auth, async (req, res) => {
 
 router.put("/me/nick", Auth, async (req, res) => {
     if (!req.body.scope) return res.json(new InvalidReplyMessage("Provide a scope"));
+    if (req.body.nickname && req.body.nickname.trim().length > 32) return res.json(new InvalidReplyMessage("Nickname must be 32 characters or less"));
     if (req.body.scope !== "global" && !isValidObjectId(req.body.scope)) return res.json(new InvalidReplyMessage("Scope must be a valid quark ID or 'global'"));
     try {
         if (req.body.scope === "global") {
             if (req.body.nickname) {
                 let Nick = db.getNicks();
                 await Nick.updateOne({userId: res.locals.user._id, scope: "global"},
-                    {nickname: req.body.nickname, userId: res.locals.user._id, scope: "global"},
+                    {nickname: req.body.nickname.trim(), userId: res.locals.user._id, scope: "global"},
                     {upsert: true});
                 return res.json(new Reply(200, true, {message: "Nickname updated"}));
             } else {
@@ -62,7 +63,7 @@ router.put("/me/nick", Auth, async (req, res) => {
             if (req.body.nickname) {
                 let Nick = db.getNicks();
                 await Nick.updateOne({userId: res.locals.user._id, scope: req.body.scope},
-                    {nickname: req.body.nickname, userId: res.locals.user._id, scope: req.body.scope},
+                    {nickname: req.body.nickname.trim(), userId: res.locals.user._id, scope: req.body.scope},
                     {upsert: true});
                 return res.json(new Reply(200, true, {message: "Nickname updated"}));
             } else {
