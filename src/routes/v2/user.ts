@@ -42,16 +42,29 @@ router.put("/me/nick", Auth, async (req, res) => {
     if (req.body.nickname && req.body.nickname.trim().length > 32) return res.json(new InvalidReplyMessage("Nickname must be 32 characters or less"));
     if (req.body.scope !== "global" && !isValidObjectId(req.body.scope)) return res.json(new InvalidReplyMessage("Scope must be a valid quark ID or 'global'"));
     try {
+
+        const up = (scope, nickname) => {
+            // Send update event
+            let data = {
+                eventId: "nicknameUpdate",
+                nickname: nickname,
+                scope: scope
+            }
+            subscriptionListener.emit("event", `me`, data);
+        }
+
         if (req.body.scope === "global") {
             if (req.body.nickname) {
                 let Nick = db.getNicks();
                 await Nick.updateOne({userId: res.locals.user._id, scope: "global"},
                     {nickname: req.body.nickname.trim(), userId: res.locals.user._id, scope: "global"},
                     {upsert: true});
+                up("global", req.body.nickname.trim())
                 return res.json(new Reply(200, true, {message: "Nickname updated"}));
             } else {
                 let Nick = db.getNicks();
                 await Nick.deleteOne({userId: res.locals.user._id, scope: "global"});
+                up("global", res.locals.user.username)
                 return res.json(new Reply(200, true, {message: "Nickname reset"}));
             }
         } else {
@@ -65,10 +78,12 @@ router.put("/me/nick", Auth, async (req, res) => {
                 await Nick.updateOne({userId: res.locals.user._id, scope: req.body.scope},
                     {nickname: req.body.nickname.trim(), userId: res.locals.user._id, scope: req.body.scope},
                     {upsert: true});
+                up(req.body.scope, req.body.nickname.trim())
                 return res.json(new Reply(200, true, {message: "Nickname updated"}));
             } else {
                 let Nick = db.getNicks();
                 await Nick.deleteOne({userId: res.locals.user._id, scope: req.body.scope});
+                up(req.body.scope, await getNick(res.locals.user._id));
                 return res.json(new Reply(200, true, {message: "Nickname reset"}));
             }
         }

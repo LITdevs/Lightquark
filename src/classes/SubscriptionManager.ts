@@ -8,22 +8,23 @@ let realEvents = [
 ]
 /**
  * channel_channelId
- *  -> messageCreate (message object, author object) X
- *  -> messageDelete (message object) X
- *  -> messageUpdate (message object) X
+ *  -> messageCreate (message object, author object)
+ *  -> messageDelete (message object)
+ *  -> messageUpdate (message object)
  *
  * quark_quarkId
- * -> quarkUpdate (quark object) X
- * -> quarkDelete (quark object) X
- * -> channelCreate (channel object, quark object) X
- * -> channelDelete (channel object, quark object) X
- * -> channelUpdate (channel object, quark object) X
- * -> memberUpdate (user object, quark object) X
- * -> memberLeave (user object, quark object) X
- * -> memberJoin (user object, quark object) X
+ * -> quarkUpdate (quark object)
+ * -> quarkDelete (quark object)
+ * -> channelCreate (channel object, quark object)
+ * -> channelDelete (channel object, quark object)
+ * -> channelUpdate (channel object, quark object)
+ * -> memberUpdate (user object, quark object)
+ * -> memberLeave (user object, quark object)
+ * -> memberJoin (user object, quark object)
  *
  * me
- * -> quarkOrderUpdate (quarkOrder array) X
+ * -> quarkOrderUpdate (quarkOrder array)
+ * -> nicknameUpdate (nickname string, scope string)
  */
 
 export default class SubscriptionManager {
