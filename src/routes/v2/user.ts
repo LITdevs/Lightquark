@@ -64,7 +64,7 @@ router.put("/me/nick", Auth, async (req, res) => {
             } else {
                 let Nick = db.getNicks();
                 await Nick.deleteOne({userId: res.locals.user._id, scope: "global"});
-                up("global", res.locals.user.username)
+                up("global", await getNick(res.locals.user._id));
                 return res.json(new Reply(200, true, {message: "Nickname reset"}));
             }
         } else {
