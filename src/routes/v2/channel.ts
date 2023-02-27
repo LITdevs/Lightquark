@@ -284,6 +284,9 @@ router.post("/:id/messages", Auth, async (req, res) => {
         let ua = req.headers['lq-agent'];
         if (!ua) ua = "Unknown";
 
+        let Quark = db.getQuarks();
+        let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
+
         const attributeCheck = async () => {
             if (req.body.specialAttributes) {
                 let attributeAllowArray = await Promise.all(req.body.specialAttributes.map(async (attribute) => {
@@ -340,7 +343,7 @@ router.post("/:id/messages", Auth, async (req, res) => {
                 // Send create event
                 let author = {
                     _id: res.locals.user._id,
-                    username: await getNick(res.locals.user._id),
+                    username: await getNick(res.locals.user._id, quark._id),
                     avatarUri: res.locals.user.avatar,
                     admin: !!res.locals.user.admin
                 }
