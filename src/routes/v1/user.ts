@@ -11,6 +11,7 @@ import axios from "axios";
 import ForbiddenReply from "../../classes/reply/ForbiddenReply.js";
 import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {subscriptionListener} from "./gateway.js";
+import {getNick} from "../../util/getNickname.js";
 
 const router: Router = express.Router();
 
@@ -95,7 +96,7 @@ router.get("/:id", Auth, (req, res) => {
             if (!quark) return res.status(403).json(new ForbiddenReply("You are not in a quark with this user"));
             let Avatars = db.getAvatars();
             // Find the avatar of the user
-            Avatars.findOne({userId: user._id}, (err, avatar) => {
+            Avatars.findOne({userId: user._id}, async (err, avatar) => {
                 if (err) {
                     console.error(err)
                     return res.status(500).json(new ServerErrorReply());
@@ -103,7 +104,7 @@ router.get("/:id", Auth, (req, res) => {
                 if (!avatar) avatar = { avatarUri: `https://auth.litdevs.org/api/avatar/bg/${user._id}`};
                 let safeUser = {
                     _id: user._id,
-                    username: user.username,
+                    username: await getNick(user._id),
                     avatarUri: avatar.avatarUri,
                     admin: !!user.admin
                 }
@@ -124,12 +125,12 @@ function userUpdate(user : any) {
             console.error(err);
             return;
         }
-        quarks.forEach((quark) => {
+        quarks.forEach(async (quark) => {
             // Send update event
             let data = {
                 eventId: "memberUpdate",
                 quark: quark,
-                user: { _id: user._id, username: user.username, avatarUri: user.avatar, admin: !!user.admin }
+                user: { _id: user._id, username: await getNick(user._id, quark._id), avatarUri: user.avatar, admin: !!user.admin }
             }
             subscriptionListener.emit("event", `quark_${quark._id}` , data);
         })

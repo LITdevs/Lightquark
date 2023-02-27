@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import Reply from "../../classes/reply/Reply.js";
 import * as jose from "jose";
 import UnauthorizedReply from "../../classes/reply/UnauthorizedReply.js";
+import {getNick} from "../../util/getNickname.js";
 
 const router: Router = express.Router();
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
@@ -45,13 +46,13 @@ router.post("/token", (req: Request, res: Response) => {
             // Lets pull some tokens from ** *** ***
             let Avatars = db.getAvatars();
 
-            Avatars.findOne({userId: loginUser._id}, (err, avatar) => {
+            Avatars.findOne({userId: loginUser._id}, async (err, avatar) => {
                 if (handleErr(err)) return;
                 let avatarUri = avatar?.avatarUri;
                 if (!avatarUri) {
                     avatarUri = `https://auth.litdevs.org/api/avatar/bg/${loginUser._id}`;
                 }
-                new jose.SignJWT({ admin: !!loginUser.admin, isBot: !!loginUser.isBot, email: loginUser.email, username: loginUser.username, _id: loginUser._id, avatar: avatarUri })
+                new jose.SignJWT({ admin: !!loginUser.admin, isBot: !!loginUser.isBot, email: loginUser.email, username: await getNick(loginUser._id), _id: loginUser._id, avatar: avatarUri })
                     .setProtectedHeader({ alg: 'HS256', typ: "JWT" })
                     .setIssuedAt()
                     .setIssuer('Lightquark')

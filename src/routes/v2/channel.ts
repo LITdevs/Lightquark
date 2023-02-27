@@ -13,6 +13,7 @@ import FormData from "form-data";
 import axios from "axios";
 import {subscriptionListener} from "../v1/gateway.js";
 import path from "path";
+import {getNick} from "../../util/getNickname.js";
 
 const router: Router = express.Router();
 
@@ -209,11 +210,14 @@ router.get("/:id/messages", Auth, async (req, res) => {
         if (req.query.startTimestamp) startTimestamp = Number(req.query.startTimestamp)
         if (isNaN(startTimestamp)) return res.status(400).json(new InvalidReplyMessage("Invalid startTimestamp"));
 
+        let Quark = db.getQuarks();
+        let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
+
         let query = messages.find({ channelId: req.params.id, timestamp: { $lt: startTimestamp } }).sort({ timestamp: -1 });
         query.limit(50);
         query.then(async (messages) => {
             for (let i = 0; i < messages.length; i++) {
-                messages[i] = { message: messages[i], author: await getUser(messages[i].authorId) };
+                messages[i] = { message: messages[i], author: await getUser(messages[i].authorId, quark?._id) };
                 try {
                     let ua = JSON.parse(messages[i].message.ua);
                     messages[i].message.ua = ua.name;
@@ -225,6 +229,40 @@ router.get("/:id/messages", Auth, async (req, res) => {
                 }
             }
             res.json(new Reply(200, true, {message: "Here are the messages", messages}));
+        })
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json(new ServerErrorReply());
+    }
+})
+
+router.get("/:id/messages/:messageId", Auth, async (req, res) => {
+    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id")); // Pretty sure this line isn't needed
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
+    if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
+
+    try {
+        let canRead = await isPermittedToRead(req.params.id, res.locals.user._id);
+        if (!canRead) return res.status(403).json(new ForbiddenReply("You do not have permission to read this channel"));
+        let messages = db.getMessages();
+
+        let Quark = db.getQuarks();
+        let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
+
+        let query = messages.findOne({ channelId: req.params.id, _id: req.params.messageId });
+        query.then(async (message) => {
+            if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
+            message = { message: message, author: await getUser(message.authorId, quark?._id) };
+            try {
+                let ua = JSON.parse(message.message.ua);
+                message.message.ua = ua.name;
+            } catch (e) {
+                // Ignore error, just let it be.
+                // This is the default behaviour
+                // A certain client sends the user agent as a bit of JSON, which messes with all the other ones
+                // So we will try to parse it and return the correct value.
+            }
+            res.json(new Reply(200, true, {message: "Here is the message", data: message}));
         })
     } catch (e) {
         console.error(e);
@@ -296,13 +334,13 @@ router.post("/:id/messages", Auth, async (req, res) => {
                 attachments: attachments || [],
                 specialAttributes: req.body.specialAttributes || []
             })
-            message.save((err) => {
+            message.save(async (err) => {
                 if (err) throw err;
                 res.json(new Reply(200, true, {message}));
                 // Send create event
                 let author = {
                     _id: res.locals.user._id,
-                    username: res.locals.user.username,
+                    username: await getNick(res.locals.user._id),
                     avatarUri: res.locals.user.avatar,
                     admin: !!res.locals.user.admin
                 }
@@ -488,7 +526,7 @@ const isPermittedToWrite = (channelId, userId) => {
     })
 }
 
-const getUser = async (userId) => {
+const getUser = async (userId, quarkId) => {
     let Users = db.getLoginUsers();
     let user = await Users.findOne({ _id: userId });
     if (!user) return null;
@@ -498,7 +536,7 @@ const getUser = async (userId) => {
     if (!avatarUri) avatarUri = `https://auth.litdevs.org/api/avatar/bg/${user._id}`;
     return {
         _id: user._id,
-        username: user.username,
+        username: await getNick(user._id, quarkId),
         avatarUri: avatarUri,
         admin: !!user.admin
     };

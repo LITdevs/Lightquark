@@ -44,6 +44,71 @@ router.get("/me", Auth, (req, res) => {
     })
 });
 
+
+/**
+ * Change quark order
+ * @param {string[]} order - The new order of the quarks
+ */
+router.put("/order", Auth, async (req, res) => {
+    try {
+        if (!req.body.order) return res.status(400).json(new InvalidReplyMessage("Provide an order"));
+        let Quarks = db.getQuarks();
+        let quarkIds = (await Quarks.find({members: res.locals.user._id})).map((quark) => quark._id.toString());
+
+        // Make sure all quarks are in the order
+        if (req.body.order.length !== quarkIds.length) return res.status(400).json(new InvalidReplyMessage("Invalid order"));
+        for(let i = 0; i < quarkIds.length; i++) {
+            if (!req.body.order.includes(quarkIds[i])) return res.status(400).json(new InvalidReplyMessage("Invalid order"));
+        }
+
+        // Update the order
+        let QuarkOrder = db.getQuarkOrders();
+        await QuarkOrder.updateOne({userId: res.locals.user._id}, {order: req.body.order}, {upsert: true});
+
+        res.json(new Reply(200, true, {message: "Quark order updated"}));
+
+        // Send update event
+        let data = {
+            eventId: "quarkOrderUpdate",
+            order: req.body.order
+        }
+        subscriptionListener.emit("event", `me`, data);
+
+
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json(new ServerErrorReply());
+    }
+})
+
+/**
+ * Get quark order
+ */
+router.get("/order", Auth, async (req, res) => {
+    try {
+        let QuarkOrder = db.getQuarkOrders();
+        let order = await QuarkOrder.findOne({userId: res.locals.user._id});
+        if (!order) {
+            order = new QuarkOrder({
+                userId: res.locals.user._id,
+                order: [],
+                _id: new mongoose.Types.ObjectId()
+            })
+
+            let Quarks = db.getQuarks();
+            let quarks = await Quarks.find({members: res.locals.user._id});
+            order.order = quarks.map((quark) => quark._id.toString());
+
+            await order.save();
+        }
+
+        res.json(new Reply(200, true, {order: order.order}));
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json(new ServerErrorReply());
+    }
+})
+
 /**
  * Create a new quark
  * @param name The name of the quark
@@ -395,5 +460,7 @@ router.patch("/:id", Auth, (req, res) => {
         }
     })
 })
+
+
 
 export default router;

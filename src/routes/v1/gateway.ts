@@ -64,18 +64,43 @@ export default (server) => {
 async function handleMessage(message, ws, user, socketId) {
     try {
         let data = JSON.parse(message);
+        // Heartbeat event
         if (data.event === "heartbeat") {
             if (!data.message) return ws.send(JSON.stringify({eventId: "error", message: "Missing message body", code: 400}));
+            // Tell the subscription manager that the client is still alive and respond
             sm.clientHeartbeat(socketId);
             ws.send(JSON.stringify({eventId: "heartbeat", message: `Still alive -GLaDOS probably. Message hash: ${crypto.createHash("sha1").update(data.message).digest("base64").substring(2,10)}`, code: 200}));
         }
+
+        // Subscribe event
         if (data.event === "subscribe") {
-            if (!data.message) return ws.send(JSON.stringify({eventId: "error", message: "Missing message body", code: 400}));
+            if (!data.message) return ws.send(JSON.stringify({
+                eventId: "error",
+                message: "Missing message body",
+                code: 400
+            }));
             let event = data.message;
             let validEvent = sm.validEvent(event);
-            if (validEvent !== 1) return ws.send(JSON.stringify({eventId: "error", message: "Invalid event", code: validEvent}));
+            if (validEvent !== 1) return ws.send(JSON.stringify({
+                eventId: "error",
+                message: "Invalid event",
+                code: validEvent
+            }));
 
-            if (event.split("_")[0] === "channel") {
+            // Check if the user is permitted to subscribe to the event
+            if (event === "me") {
+                // `me` doesn't need any checks
+                /**
+                 * Callback function for the subscription manager
+                 * @param data
+                 */
+                const sub = (data) => {
+                    ws.send(JSON.stringify(data));
+                }
+                sm.subscribe(event, sub, user, socketId);
+                ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
+
+            } else if (event.split("_")[0] === "channel") {
                 isPermittedToRead(event.split("_")[1], user._id).then(permitted => {
                     if (permitted) {
                         const sub = (data) => {

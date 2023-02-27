@@ -11,6 +11,8 @@ import axios from "axios";
 import ForbiddenReply from "../../classes/reply/ForbiddenReply.js";
 import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {subscriptionListener} from "../v1/gateway.js";
+import {getNick} from "../../util/getNickname.js";
+import {isValidObjectId} from "mongoose";
 
 const router: Router = express.Router();
 
@@ -20,6 +22,59 @@ router.get("/me", Auth, (req, res) => {
 
 router.get("/me/avatar", Auth, (req, res) => {
     res.redirect(res.locals.user.avatar);
+})
+
+router.get("/me/nick/:scope", Auth, async (req, res) => {
+    try {
+        let scope
+        if (req.params.scope !== "global") {
+            if (!isValidObjectId(req.params.scope)) return res.json(new InvalidReplyMessage("Scope must be a valid quark ID or 'global'"));
+            scope = req.params.scope;
+        }
+        res.json(new Reply(200, true, {message: "Here is your nickname", nickname: await getNick(res.locals.user._id, scope)}));
+    } catch (e) {
+        res.json(new ServerErrorReply());
+    }
+})
+
+router.put("/me/nick", Auth, async (req, res) => {
+    if (!req.body.scope) return res.json(new InvalidReplyMessage("Provide a scope"));
+    if (req.body.scope !== "global" && !isValidObjectId(req.body.scope)) return res.json(new InvalidReplyMessage("Scope must be a valid quark ID or 'global'"));
+    try {
+        if (req.body.scope === "global") {
+            if (req.body.nickname) {
+                let Nick = db.getNicks();
+                await Nick.updateOne({userId: res.locals.user._id, scope: "global"},
+                    {nickname: req.body.nickname, userId: res.locals.user._id, scope: "global"},
+                    {upsert: true});
+                return res.json(new Reply(200, true, {message: "Nickname updated"}));
+            } else {
+                let Nick = db.getNicks();
+                await Nick.deleteOne({userId: res.locals.user._id, scope: "global"});
+                return res.json(new Reply(200, true, {message: "Nickname reset"}));
+            }
+        } else {
+            let Quark = db.getQuarks();
+            let quark = await Quark.findOne({_id: req.body.scope})
+            if (!quark) return res.json(new Reply(404, false, {message: "Quark not found"}));
+            if (!quark.members.includes(res.locals.user._id)) return res.json(new ForbiddenReply());
+
+            if (req.body.nickname) {
+                let Nick = db.getNicks();
+                await Nick.updateOne({userId: res.locals.user._id, scope: req.body.scope},
+                    {nickname: req.body.nickname, userId: res.locals.user._id, scope: req.body.scope},
+                    {upsert: true});
+                return res.json(new Reply(200, true, {message: "Nickname updated"}));
+            } else {
+                let Nick = db.getNicks();
+                await Nick.deleteOne({userId: res.locals.user._id, scope: req.body.scope});
+                return res.json(new Reply(200, true, {message: "Nickname reset"}));
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json(new ServerErrorReply());
+    }
 })
 
 /**
@@ -95,7 +150,7 @@ router.get("/:id", Auth, (req, res) => {
             if (!quark) return res.status(403).json(new ForbiddenReply("You are not in a quark with this user"));
             let Avatars = db.getAvatars();
             // Find the avatar of the user
-            Avatars.findOne({userId: user._id}, (err, avatar) => {
+            Avatars.findOne({userId: user._id}, async (err, avatar) => {
                 if (err) {
                     console.error(err)
                     return res.status(500).json(new ServerErrorReply());
@@ -103,7 +158,7 @@ router.get("/:id", Auth, (req, res) => {
                 if (!avatar) avatar = { avatarUri: `https://auth.litdevs.org/api/avatar/bg/${user._id}`};
                 let safeUser = {
                     _id: user._id,
-                    username: user.username,
+                    username: await getNick(user._id),
                     avatarUri: avatar.avatarUri,
                     admin: !!user.admin
                 }
@@ -124,12 +179,12 @@ function userUpdate(user : any) {
             console.error(err);
             return;
         }
-        quarks.forEach((quark) => {
+        quarks.forEach(async (quark) => {
             // Send update event
             let data = {
                 eventId: "memberUpdate",
                 quark: quark,
-                user: { _id: user._id, username: user.username, avatarUri: user.avatar, admin: !!user.admin }
+                user: { _id: user._id, username: await getNick(user._id, quark._id), avatarUri: user.avatar, admin: !!user.admin }
             }
             subscriptionListener.emit("event", `quark_${quark._id}` , data);
         })

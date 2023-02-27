@@ -3,7 +3,8 @@ import db from "../db.js";
 
 let realEvents = [
     "quark",
-    "channel"
+    "channel",
+    "me"
 ]
 /**
  * channel_channelId
@@ -20,6 +21,9 @@ let realEvents = [
  * -> memberUpdate (user object, quark object) X
  * -> memberLeave (user object, quark object) X
  * -> memberJoin (user object, quark object) X
+ *
+ * me
+ * -> quarkOrderUpdate (quarkOrder array) X
  */
 
 export default class SubscriptionManager {
@@ -54,6 +58,10 @@ export default class SubscriptionManager {
      * @returns {int}
      */
     validEvent(event) {
+        // me events dont have an id
+        if (realEvents.includes(event)) return 1;
+
+        // Split the eventTag_1234567890 into ["eventTag", "1234567890"]
         let props = event.split("_");
         if (!props || props.length < 2) return 2;
         let eventTag = props[0];

@@ -12,6 +12,7 @@ import FormData from "form-data";
 import fs from "fs";
 import axios from "axios";
 import {subscriptionListener} from "./gateway.js";
+import {getNick} from "../../util/getNickname.js";
 
 const router: Router = express.Router();
 
@@ -83,7 +84,7 @@ router.post("/:id/leave", Auth, (req, res) => {
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
         if (quark.owners.includes(res.locals.user._id)) return res.status(400).json(new Reply(400, false, {message: "You cannot leave a quark you own"}));
         quark.members = quark.members.filter((member) => member.toString() !== res.locals.user._id.toString());
-        quark.save((err) => {
+        quark.save(async (err) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
@@ -94,7 +95,7 @@ router.post("/:id/leave", Auth, (req, res) => {
             let data = {
                 eventId: "memberLeave",
                 quark: quark,
-                user: { _id: res.locals.user._id, username: res.locals.user.username, avatarUri: res.locals.user.avatar }
+                user: { _id: res.locals.user._id, username: getNick(res.locals.user._id, quark._id), avatarUri: res.locals.user.avatar }
             }
             subscriptionListener.emit("event", `quark_${quark._id}` , data);
         })
@@ -197,7 +198,7 @@ router.post("/invite/:invite", Auth, (req, res) => {
         if (!inviteQuark) return res.status(404).json(new NotFoundReply("Invalid invite"));
         if (inviteQuark.members.includes(res.locals.user._id)) return res.status(400).json(new InvalidReplyMessage("You are already a member of this quark"));
         inviteQuark.members.push(res.locals.user._id);
-        inviteQuark.save((err) => {
+        inviteQuark.save(async (err) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
@@ -208,7 +209,7 @@ router.post("/invite/:invite", Auth, (req, res) => {
             let data = {
                 eventId: "memberJoin",
                 quark: inviteQuark,
-                user: { _id: res.locals.user._id, username: res.locals.user.username, avatarUri: res.locals.user.avatar }
+                user: { _id: res.locals.user._id, username: await getNick(res.locals.user._id, inviteQuark._id), avatarUri: res.locals.user.avatar }
             }
             subscriptionListener.emit("event", `quark_${inviteQuark._id}` , data);
         });
