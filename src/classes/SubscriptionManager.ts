@@ -89,6 +89,7 @@ export default class SubscriptionManager {
         if (!this.subscriptions[event]) return;
         this.subscriptions[event].forEach(sub => {
             try {
+                if (event === "me" && sub.userId !== data.userId) return;
                 sub.callback(data);
             } catch (e) {
                 console.error(e);

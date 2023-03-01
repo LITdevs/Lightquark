@@ -84,6 +84,7 @@ async function handleMessage(message, ws, user, socketId) {
             if (validEvent !== 1) return ws.send(JSON.stringify({
                 eventId: "error",
                 message: "Invalid event",
+                attemptedEvent: event,
                 code: validEvent
             }));
 

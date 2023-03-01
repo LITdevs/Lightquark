@@ -47,6 +47,7 @@ router.put("/me/nick", Auth, async (req, res) => {
             // Send update event
             let data = {
                 eventId: "nicknameUpdate",
+                userId: res.locals.user._id,
                 nickname: nickname,
                 scope: scope
             }
@@ -101,6 +102,7 @@ router.put("/me/avatar", Auth, async (req, res) => {
     if (!req.body || !isUint8Array(req.body)) return res.json(new Reply(400, false, {message: "Request body must be an image file in binary form"}));
     let fileType : FileTypeResult | undefined = await fileTypeFromBuffer(req.body);
     if (!fileType) return res.json(new Reply(400, false, {message: "Request body must be an image file in binary form"}));
+    if (req.body.byteLength > 2097152) return res.json(new Reply(400, false, {message: "File size must be less than 2MiB"}));
     let formData = new FormData();
     let randomName = `${Math.floor(Math.random() * 1000000)}.${fileType.ext}`;
     fs.writeFileSync(`/share/wcloud/${randomName}`, req.body);

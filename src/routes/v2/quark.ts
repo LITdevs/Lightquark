@@ -70,7 +70,8 @@ router.put("/order", Auth, async (req, res) => {
         // Send update event
         let data = {
             eventId: "quarkOrderUpdate",
-            order: req.body.order
+            order: req.body.order,
+            userId: res.locals.user._id
         }
         subscriptionListener.emit("event", `me`, data);
 
