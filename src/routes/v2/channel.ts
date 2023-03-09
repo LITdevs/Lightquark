@@ -296,7 +296,8 @@ router.post("/:id/messages", Auth, async (req, res) => {
                         "reply"
                     ]
                     let defaultAllowed = [
-                        "/me"
+                        "/me",
+                        "client"
                     ]
 
                     if (typeof attribute !== "object") return false;
