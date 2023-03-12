@@ -2,6 +2,7 @@ import express, {Request, Response} from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 import db from "./db.js";
+import path from "path";
 const app = express();
 
 // Parse JSON bodies
@@ -66,8 +67,6 @@ app.patch("*", (req : Request, res : Response) => {
 })
 
 import gateway from './routes/v1/gateway.js';
-import fs from "fs";
-import path from "path";
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
     const server = app.listen(port, () => {
