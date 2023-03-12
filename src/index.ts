@@ -48,6 +48,10 @@ app.get("/d/:quarkId/:channelId?/:messageId?", (req: Request, res: Response) => 
     res.redirect(lqLink)
 })
 
+app.get("/features", (req: Request, res: Response) => {
+    res.sendFile("public/features.html", {root: path.resolve()});
+})
+
 app.get("*", (req : Request, res : Response) => {
     res.status(403).end();
 })
@@ -62,6 +66,8 @@ app.patch("*", (req : Request, res : Response) => {
 })
 
 import gateway from './routes/v1/gateway.js';
+import fs from "fs";
+import path from "path";
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
     const server = app.listen(port, () => {

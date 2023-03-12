@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Lightquark capabilities</title>
+		<style>
+            @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;1,100;1,200;1,300;1,400;1,500;1,600&family=IBM+Plex+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;1,100;1,200;1,300;1,400;1,500;1,600&display=swap');
+			body {
+				font-family: "IBM Plex Sans", sans-serif;
+			}
+            code {
+				font-family: "IBM Plex Mono", monospace;
+	            background-color: #f5f5f5;
+	            border-radius: 1px;
+			}
+            li {
+				margin-top: 0.75em;
+            }
+
+            .badge {
+	            border-radius: 0.5em;
+	            padding: 0.15em 0.4em;
+	            font-size: 0.75em;
+	            font-weight: 600;
+	            margin: 0.25em;
+            }
+
+            .badge-basic {
+	            background-color: #588be1;
+	            color: #ffffff;
+            }
+
+            .badge-featured {
+                background-color: #59be1c;
+                color: #ffffff;
+			}
+
+            @media (prefers-color-scheme: dark) {
+				body {
+					background-color: #1e1e1e;
+					color: #d4d4d4;
+				}
+				code {
+					background-color: #2c2c2d;
+					color: #d4d4d4;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Lightquark capability list</h1>
+		<h4>So, you want to create a capabilities.json, huh? Well you have come to the right place if you want to know what capabilities there actually are! (you don't)</h4>
+		<p>Last updated: <time datetime="2023-03-12">12.3.2023</time></p>
+		<hr>
+		<h2>Capabilities</h2>
+		<p>There are 2 tiers of "official" specification for being included on the Lightquark site:</p>
+		<ul>
+			<li>"Featured" indicated by {f}</li>
+			These features are required to be featured more prominently on the Lightquark site.<br>
+			This indicates to the user that the client is quite capable and likely to be a good experience.
+			<li>"Basic" indicated by {b}</li>
+			These features are the bare minimum for a client to be considered a Lightquark client.<br>
+			This indicates to the user that the client can perform the most basic functions, but does not guarantee a polished experience.
+		</ul>
+		Each capability might have one of the indicators above, or none at all.<br>
+		Indicator tooltips may have extra information about the requirement. For example: some Basic features only require partial support described in the tooltip.<br>
+		<small>Indicators may not render on IE11 or older Safari versions, instead you will see {type:"extra info"} :)</small>
+		<h3>General</h3>
+		<p>In capabilities.json add these as <code>general.CAPABILITY</code>, for example: <code>general.authentication</code>.</p>
+		<ul>
+			<li>
+				<code>authentication</code> {b} {f}
+			</li>
+			Can the user log in with the client?
+			<li>
+				<code>gateway</code> {b} {f}
+			</li>
+			Can the client connect to the gateway?<br>
+			Individual event handling is covered by various different capabilities.
+			<li>
+				<code>deeplink</code> {b} {f}
+			</li>
+			Does the client allow opening and creating <code>lightquark://</code> links?<br>
+			Link opening support includes 3 parts, quarks, channels and messages. Message opening means that the client can tell the user which message is being linked to.<br>
+			Partial support indication should indicate how much of the link is supported. For example if the client can open links to quarks and channels, but not messages.<br>
+			<li>
+				<code>notifications</code> {f}
+			</li>
+			Does the client send notifications?<br>
+			Full support includes allowing the user to disable notifications.
+		</ul>
+		<h3>Quarks</h3>
+		<p>In capabilities.json add these as <code>quarks.CAPABILITY</code>, for example: <code>quarks.create</code>.</p>
+		<ul>
+			<li>
+				<code>create</code> {f}
+			</li>
+			Can the user create quarks?
+			<li>
+				<code>delete</code> {f}
+			</li>
+			Does the client handle quark deletions?<br>
+			Can the user delete quarks?
+			<li>
+				<code>edit</code> {f}
+			</li>
+			Does the client handle quark edits?<br>
+			Can the user edit quarks?<br>
+			This includes changing each editable field, except for the icon.
+			<li>
+				<code>icon</code> {f}
+			</li>
+			Can the user change the quark icon?<br>
+			Handling quark icon changes is covered by <code>quarks.edit</code>.
+			<li>
+				<code>list</code> {b} {f}
+			</li>
+			Can the user list quarks they are a member of?
+			<li>
+				<code>view</code> {b} {f}
+			</li>
+			Can the user view individual quarks?<br>
+			This includes displaying the quark name and icon, but not the quark's channels (covered by <code>channels.view</code>)
+			<li>
+				<code>invite</code> {f}
+			</li>
+			Can the user obtain an invitation code for a quark?
+			<li>
+				<code>join</code> {b} {f}
+			</li>
+			Can the user join a quark using an invitation code?
+			<li>
+				<code>leave</code> {b} {f}
+			</li>
+			Can the user leave a quark?
+			<li>
+				<code>order</code> {f}
+			</li>
+			Does the client respect the quark order?
+			Can the user change the order of quarks?
+			Does the client handle quark order changes?
+
+		</ul>
+		<h3>Channels</h3>
+		<p>In capabilities.json add these as <code>channels.CAPABILITY</code>, for example: <code>channels.list</code>.</p>
+		<ul>
+			<li>
+				<code>list</code> {b} {f}
+			</li>
+			Can the user list channels contained in a quark?
+			<li>
+				<code>create</code> {f}
+			</li>
+			Does the client handle channel creations?<br>
+			Can the user create channels?
+			<li>
+				<code>delete</code> {f}
+			</li>
+			Does the client handle channel deletions?<br>
+			Can the user delete channels?
+			<li>
+				<code>edit</code> {f}
+			</li>
+			Does the client handle channel edits?<br>
+			Can the user edit channels?<br>
+			This includes changing each editable field.
+			<li>
+				<code>view</code> {b} {f}
+			</li>
+			Can the user view individual channels?<br>
+			This includes displaying the channel description, but not the channel's messages (covered by <code>messages.read</code>)
+			<li>
+				<code>history</code> {f}
+			</li>
+			Can the user view the channel's message history?
+		</ul>
+		<h3>Messages</h3>
+		<p>In capabilities.json add these as <code>messages.CAPABILITY</code>, for example: <code>messages.read</code>.</p>
+		<ul>
+			<li>
+				<code>read</code> {b} {f}
+			</li>
+			Can the user read messages from a channel?
+			<li>
+				<code>send</code> {b} {f}
+			</li>
+			Can the user send messages to a channel?
+			<li>
+				<code>edit</code> {b:"Should at least handle the event"} {f}
+			</li>
+			Does the client handle message edits?<br>
+			Can the user edit messages?
+			<li>
+				<code>delete</code> {b:"Should at least handle the event"} {f}
+			</li>
+			Does the client handle message deletions?<br>
+			Can the user delete messages?
+			<li>
+				<code>botMessage</code> {f}
+			</li>
+			Does the client handle bot messages?
+			<li>
+				<code>me</code>
+			</li>
+			Does the client handle <code>/me</code> messages?
+			Can the user send <code>/me</code> messages?
+		</ul>
+		<h3>Users</h3>
+		<p>In capabilities.json add these as <code>users.CAPABILITY</code>, for example: <code>users.me</code>.</p>
+		<ul>
+			<li>
+				<code>me</code> {b} {f}
+			</li>
+			Can the user view their own user information?<br>
+			This includes their username and avatar. Other information is optional.
+			<li>
+				<code>avatars</code>
+			</li>
+			Does the client display user avatars?
+			<li>
+				<code>avatar</code>
+			</li>
+			Does the client allow the user to change their avatar?
+			<li>
+				<code>nickname</code> {f}
+			</li>
+			Does the client allow the user to change their nickname?<br>
+			This includes both global and quark-specific nicknames.
+
+		</ul>
+		<h3>Special</h3>
+		<p>Does your client do something special? Add an entry in <code>features.full</code> in the following format:</p>
+		<code>
+			[
+				{
+					"name": "Name of the feature",
+					"description": "Description of the feature"
+				}
+			]
+		</code>
+	<p>Note that there should only be one special feature array, which contains all special features.<br>
+	Examples of special features: LIT Dev indicator, owospeak, special icons for users etc. Any fun extras you can come up with!</p>
+	<script>
+		let BasicRequirementRegex = /{b(:"(?<extra>.*)")?}/gm;
+		let FeaturedRequirementRegex = /{f(:"(?<extra>.*)")?}/gm;
+
+		// For each match of BasicRequirementRegex
+		for (let match of document.body.innerHTML.matchAll(BasicRequirementRegex)) {
+			// Get the element that contains the match
+			let element = match["input"].substring(match["index"], match["index"] + match[0].length);
+			let BasicRequirement = document.createElement("span");
+			BasicRequirement.classList.add("badge");
+			BasicRequirement.classList.add("badge-basic");
+			BasicRequirement.title = `Required for Basic${match.groups.extra ? `: ${match.groups.extra}` : ""}`;
+			BasicRequirement.innerText = "B";
+			// Replace the element with the BasicRequirement element
+			document.body.innerHTML = document.body.innerHTML.replace(element, BasicRequirement.outerHTML);
+		}
+
+		// For each match of FeaturedRequirementRegex
+		for (let match of document.body.innerHTML.matchAll(FeaturedRequirementRegex)) {
+			// Get the element that contains the match
+			let element = match["input"].substring(match["index"], match["index"] + match[0].length);
+			let FeatureRequirement = document.createElement("span");
+			FeatureRequirement.classList.add("badge");
+			FeatureRequirement.classList.add("badge-featured");
+			FeatureRequirement.title = `Required for Featured${match.groups.extra ? `: ${match.groups.extra}` : ""}`;
+			FeatureRequirement.innerText = "F";
+			// Replace the element with the BasicRequirement element
+			document.body.innerHTML = document.body.innerHTML.replace(element, FeatureRequirement.outerHTML);
+		}
+	</script>
+	</body>
+</html>

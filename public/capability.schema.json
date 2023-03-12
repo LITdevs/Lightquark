@@ -1,0 +1,73 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://lq.litdevs.org/capability.schema.json",
+	"required": [
+		"client",
+		"features"
+	],
+	"type": "object",
+	"properties": {
+		"client": {
+			"type": "object",
+			"description": "Basic information about the client",
+			"required": [
+				"name",
+				"author",
+				"version",
+				"repository"
+			],
+			"properties": {
+				"name": {
+					"description": "The client name",
+					"type": "string",
+					"examples": [
+						"Lightquark Client"
+					]
+				},
+				"author": {
+					"description": "The client author or authors",
+					"type": "string"
+				},
+				"version": {
+					"description": "The latest client version, in semver format",
+					"type": "string",
+					"examples": [
+						"1.0.0",
+						"2.1.77",
+						"0.2.8-release"
+					]
+				},
+				"repository": {
+					"description": "A link to the client's public git repository",
+					"type": "string",
+					"format": "uri",
+					"examples": [
+						"https://github.com/LITdevs/Lightquark"
+					]
+				}
+			}
+		},
+		"features": {
+			"type": "object",
+			"description": "A list of features that the client supports. A list of features can be found at https://lq.litdevs.org/features",
+			"required": [
+				"full"
+			],
+			"properties": {
+				"full": {
+					"type": "array",
+					"description": "A list of features that the client supports fully"
+				},
+				"partial": {
+					"type": "array",
+					"description": "A list of features that the client supports partially. For example can understand edits, but not create them"
+				},
+				"unsupported": {
+					"type": "array",
+					"description": "A list of features that the client does not support at all"
+				}
+			}
+		}
+	}
+
+}
