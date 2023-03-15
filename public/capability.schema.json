@@ -60,7 +60,30 @@
 				},
 				"partial": {
 					"type": "array",
-					"description": "A list of features that the client supports partially. For example can understand edits, but not create them"
+					"description": "A list of features that the client supports partially. For example can understand edits, but not create them",
+					"items": {
+						"type": "object",
+						"required": [
+							"feature",
+							"reason"
+						],
+						"properties": {
+							"feature": {
+								"type": "string",
+								"description": "The feature that the client supports partially",
+								"examples": [
+									"messages.edit"
+								]
+							},
+							"reason": {
+								"type": "string",
+								"description": "The reason why the client supports the feature partially",
+								"examples": [
+									"Can understand edits, but not create them"
+								]
+							}
+						}
+					}
 				},
 				"unsupported": {
 					"type": "array",
