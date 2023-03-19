@@ -14,7 +14,8 @@
 				"name",
 				"author",
 				"version",
-				"repository"
+				"repository",
+				"url"
 			],
 			"properties": {
 				"name": {
@@ -43,6 +44,14 @@
 					"format": "uri",
 					"examples": [
 						"https://github.com/LITdevs/Lightquark"
+					]
+				},
+				"url": {
+					"description": "A link to the client's website or download page etc.",
+					"type": "string",
+					"format": "uri",
+					"examples": [
+						"https://lq.litdevs.org/"
 					]
 				}
 			}
