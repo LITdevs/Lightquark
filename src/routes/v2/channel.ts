@@ -205,7 +205,7 @@ router.get("/:id/messages", Auth, async (req, res) => {
         let canRead = await isPermittedToRead(req.params.id, res.locals.user._id);
         if (!canRead) return res.status(403).json(new ForbiddenReply("You do not have permission to read this channel"));
         let messages = db.getMessages();
-        // Optionally client can provide a timestamp to get messages before
+        // Optionally client can provide a timestamp to get messages before or after
         let startTimestamp = Infinity;
         let endTimestamp = 0;
         if (req.query.startTimestamp) startTimestamp = Number(req.query.startTimestamp)
