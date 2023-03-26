@@ -83,7 +83,18 @@ async function Auth(req, res, next) {
         })
         // Store the data in locals
         res.locals.user = payload;
-        return next()
+
+        // Update avatar from database
+        let Avatars = db.getAvatars();
+        Avatars.findOne({userId: payload._id}, async (err, avatar) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json(new ServerErrorReply());
+            }
+            let avatarUri = avatar?.avatarUri;
+            if (avatarUri) res.locals.user.avatar = avatarUri;
+            return next();
+        })
     } catch (e : any) {
         if (["ERR_JWT_CLAIM_VALIDATION_FAILED", "ERR_JWS_INVALID", "ERR_JWS_SIGNATURE_VERIFICATION_FAILED", "ERR_JWT_EXPIRED"].includes(e.code)) {
             return res.status(401).json(new UnauthorizedReply(e.code));
