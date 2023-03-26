@@ -207,13 +207,18 @@ router.get("/:id/messages", Auth, async (req, res) => {
         let messages = db.getMessages();
         // Optionally client can provide a timestamp to get messages before
         let startTimestamp = Infinity;
+        let endTimestamp = 0;
         if (req.query.startTimestamp) startTimestamp = Number(req.query.startTimestamp)
+        if (req.query.endTimestamp) endTimestamp = Number(req.query.endTimestamp)
         if (isNaN(startTimestamp)) return res.status(400).json(new InvalidReplyMessage("Invalid startTimestamp"));
+        if (isNaN(endTimestamp)) return res.status(400).json(new InvalidReplyMessage("Invalid endTimestamp"));
 
         let Quark = db.getQuarks();
         let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
 
-        let query = messages.find({ channelId: req.params.id, timestamp: { $lt: startTimestamp } }).sort({ timestamp: -1 });
+        // Find messages in specified range, if endTimestamp is specified get messages after that timestamp, otherwise get messages before that timestamp
+        // The naming is a bit backwards, isn't it?
+        let query = messages.find({ channelId: req.params.id, timestamp: { $lt: startTimestamp, $gt: endTimestamp } }).sort({ timestamp: endTimestamp === 0 ? -1 : 1 });
         query.limit(50);
         query.then(async (messages) => {
             for (let i = 0; i < messages.length; i++) {
