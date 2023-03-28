@@ -289,16 +289,17 @@ router.post("/:id/messages", Auth, async (req, res) => {
                     let allAllowed = [
                         "/me",
                         "botMessage",
-                        "reply"
+                        "reply",
+                        "clientAttributes"
                     ]
                     let defaultAllowed = [
                         "/me",
-                        "client"
+                        "clientAttributes"
                     ]
 
-                    if (typeof attribute !== "object") return false;
-                    if (defaultAllowed.includes(attribute.type)) return true;
+                    if (typeof attribute !== "object" || !attribute.type) return false;
                     if (!allAllowed.includes(attribute.type)) return false;
+                    if (defaultAllowed.includes(attribute.type)) return true;
 
                     if (attribute.type === "botMessage") return !!res.locals.user.isBot;
 
@@ -306,8 +307,7 @@ router.post("/:id/messages", Auth, async (req, res) => {
                         try {
                             if (!attribute.replyTo || !isValidObjectId(attribute.replyTo)) return false;
                             let replyToMessage = await Message.findOne({ _id: attribute.replyTo, channelId: req.params.id})
-                            if (!replyToMessage) return false;
-                            return true;
+                            return !!replyToMessage;
                         } catch (e) {
                             console.error(e);
                             return false;
@@ -477,18 +477,34 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
         if (message.authorId.toString() !== res.locals.user._id.toString()) return res.status(403).json(new ForbiddenReply("You do not have permission to edit this message"));
         // Send pipe bomb
         message.content = req.body.content.trim();
+        if (req.body.clientAttributes) {
+            if (!req.body.clientAttributes.type) req.body.clientAttributes.type = "clientAttributes";
+            // Change existing array entry if it exists
+            let index = message.specialAttributes?.findIndex((a) => a.type === "clientAttributes");
+            if (!message?.specialAttributes) message.specialAttributes = [];
+            if (index && index !== -1) message.specialAttributes[index] = req.body.clientAttributes;
+            else message.specialAttributes.push(req.body.clientAttributes);
+        }
         message.edited = true;
-        message.save((err) => {
+        message.save(async (err) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
             }
+
+            let Quark = db.getQuarks();
+            let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
+
+            let user = await getUser(message.authorId, quark._id)
+
             // Return success
-            res.json(new Reply(200, true, {message}));
+            res.json(new Reply(200, true, {message, author: user}));
+
             // Send edit event
             let data = {
                 eventId: "messageUpdate",
-                message: message
+                message: message,
+                author: user
             }
             subscriptionListener.emit("event", `channel_${message.channelId}` , data);
         })
