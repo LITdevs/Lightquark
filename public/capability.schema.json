@@ -14,7 +14,6 @@
 				"name",
 				"author",
 				"version",
-				"repository",
 				"url"
 			],
 			"properties": {
@@ -52,6 +51,14 @@
 					"format": "uri",
 					"examples": [
 						"https://lq.litdevs.org/"
+					]
+				},
+				"icon": {
+					"description": "A link to the client's icon",
+					"type": "string",
+					"format": "uri",
+					"examples": [
+						"https://lq.litdevs.org/icon.svg"
 					]
 				}
 			}
