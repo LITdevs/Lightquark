@@ -219,7 +219,7 @@
 		<p>In capabilities.json add these as <code>users.CAPABILITY</code>, for example: <code>users.me</code>.</p>
 		<ul>
 			<li>
-				<code>me</code> {b} {f}
+				<code>me</code> {b:"Avatar support optional"} {f:"Avatar support optional"}
 			</li>
 			Can the user view their own user information?<br>
 			This includes their username and avatar. Other information is optional.
@@ -251,8 +251,8 @@
 	<p>Note that there should only be one special feature array, which contains all special features.<br>
 	Examples of special features: LIT Dev indicator, owospeak, special icons for users etc. Any fun extras you can come up with!</p>
 	<script>
-		let BasicRequirementRegex = /{b(:"(?<extra>.*)")?}/gm;
-		let FeaturedRequirementRegex = /{f(:"(?<extra>.*)")?}/gm;
+		let BasicRequirementRegex = /{b(:"(?<extra>[^"]*)")?}/gm;
+		let FeaturedRequirementRegex = /{f(:"(?<extra>[^"]*)")?}/gm;
 
 		// For each match of BasicRequirementRegex
 		for (let match of document.body.innerHTML.matchAll(BasicRequirementRegex)) {
@@ -262,7 +262,7 @@
 			BasicRequirement.classList.add("badge");
 			BasicRequirement.classList.add("badge-basic");
 			BasicRequirement.title = `Required for Basic${match.groups.extra ? `: ${match.groups.extra}` : ""}`;
-			BasicRequirement.innerText = "B";
+			BasicRequirement.innerText = `B${match.groups.extra ? "*" : ""}`;
 			// Replace the element with the BasicRequirement element
 			document.body.innerHTML = document.body.innerHTML.replace(element, BasicRequirement.outerHTML);
 		}
@@ -275,7 +275,7 @@
 			FeatureRequirement.classList.add("badge");
 			FeatureRequirement.classList.add("badge-featured");
 			FeatureRequirement.title = `Required for Featured${match.groups.extra ? `: ${match.groups.extra}` : ""}`;
-			FeatureRequirement.innerText = "F";
+			FeatureRequirement.innerText = `F${match.groups.extra ? "*" : ""}`;
 			// Replace the element with the BasicRequirement element
 			document.body.innerHTML = document.body.innerHTML.replace(element, FeatureRequirement.outerHTML);
 		}
