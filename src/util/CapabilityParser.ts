@@ -39,7 +39,7 @@ export default async function parse(url : string) {
     if (capability?.features?.partial && typeof capability.features.partial === "object") {
         // Is array?
         if (!Array.isArray(capability.features.partial)) throw new Error("Malformed capability manifest");
-        capability.features.full.forEach(feature => {
+        capability.features.partial.forEach(feature => {
             if (typeof feature === "object" && !Array.isArray(feature)) allPartials.push(feature);
         })
     }
