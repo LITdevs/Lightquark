@@ -53,6 +53,27 @@ app.get("/features", (req: Request, res: Response) => {
     res.sendFile("public/features.html", {root: path.resolve()});
 })
 
+import fs from "fs";
+const knownClients = JSON.parse(fs.readFileSync("src/util/knownClients.json").toString());
+import CapabilityParser from "./util/CapabilityParser.js";
+
+console.log(knownClients);
+app.get("/features/:clientName", async (req: Request, res: Response) => {
+    try {
+        let client = knownClients.knownClients.find(client => client.name === req.params.clientName);
+        if (!client) {
+            res.status(404).end();
+            return;
+        }
+        let clientCapabilities = await CapabilityParser(client.capabilityUrl);
+        res.json(clientCapabilities);
+
+    } catch (e) {
+        console.error(e);
+        res.status(500).json(new ServerErrorReply())
+    }
+})
+
 app.get("*", (req : Request, res : Response) => {
     res.status(403).end();
 })
@@ -67,6 +88,7 @@ app.patch("*", (req : Request, res : Response) => {
 })
 
 import gateway from './routes/v1/gateway.js';
+import ServerErrorReply from "./classes/reply/ServerErrorReply.js";
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
     const server = app.listen(port, () => {

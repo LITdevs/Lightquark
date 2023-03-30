@@ -1,0 +1,12 @@
+{
+	"knownClients": [
+		{
+			"name": "Quarky",
+			"capabilityUrl": "https://raw.githubusercontent.com/Vukkysoft/Quarky/main/public/capabilities.json"
+		},
+		{
+			"name": "Quarklight",
+			"capabilityUrl": "https://raw.githubusercontent.com/vtheskeleton/quarklight/prod/capabilities.json"
+		}
+	]
+}
