@@ -52,6 +52,7 @@
 					result.innerHTML = `
 						<h2>${match.attribute.key} (${match.score.toFixed(0)}% Match)</h2>
 						<p>${match.attribute.description || "No description"}</p>
+						<p>${match.attribute.count} usages.</p>
 					`;
 					resultsElement.appendChild(result);
 				});
