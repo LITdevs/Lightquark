@@ -38,41 +38,8 @@ app.use("/v2/quark", quarkv2);
 app.use("/v2/channel", channelv2);
 app.use("/v2/dm", dmv2);
 
-
-app.get("/v1/ping", (req : Request, res : Response) => {
-    res.contentType("text/plain");
-    res.send("pong");
-})
-
-app.get("/d/:quarkId/:channelId?/:messageId?", (req: Request, res: Response) => {
-    let lqLink = `lightquark://${req.params.quarkId}${req.params.channelId ? `/${req.params.channelId}`: ""}${req.params.messageId ? `/${req.params.messageId}`: ""}`
-    res.redirect(lqLink)
-})
-
-app.get("/features", (req: Request, res: Response) => {
-    res.sendFile("public/features.html", {root: path.resolve()});
-})
-
-import fs from "fs";
-const knownClients = JSON.parse(fs.readFileSync("src/util/knownClients.json").toString());
-import CapabilityParser from "./util/CapabilityParser.js";
-
-console.log(knownClients);
-app.get("/features/:clientName", async (req: Request, res: Response) => {
-    try {
-        let client = knownClients.knownClients.find(client => client.name === req.params.clientName);
-        if (!client) {
-            res.status(404).end();
-            return;
-        }
-        let clientCapabilities = await CapabilityParser(client.capabilityUrl);
-        res.json(clientCapabilities);
-
-    } catch (e) {
-        console.error(e);
-        res.status(500).json(new ServerErrorReply())
-    }
-})
+import home from './routes/home.js';
+app.use("/", home)
 
 app.get("*", (req : Request, res : Response) => {
     res.status(403).end();
