@@ -271,7 +271,7 @@ router.post("/:id/messages", Auth, async (req, res) => {
         if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
         if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
         if ((!req.body.content || req.body.content.trim().length === 0) && (!req.body.attachments || req.body.attachments.length === 0)) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
-        if (req.body.content && req.body.content.trim().length > 2000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 2000 characters"}));
+        if (req.body.content && req.body.content.trim().length > 10000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 10000 characters"}));
         if (req.body.attachments && !Array.isArray(req.body.attachments)) return res.status(400).json(new InvalidReplyMessage("Attachments must be an array"));
         if (req.body.attachments && req.body.attachments.length > 10) return res.status(400).json(new Reply(400, false, {message: "You can only attach 10 files per message"}));
         let canWrite = await isPermittedToWrite(req.params.id, res.locals.user._id);
@@ -296,6 +296,13 @@ router.post("/:id/messages", Auth, async (req, res) => {
                         "/me",
                         "clientAttributes"
                     ]
+
+                    // Clean up plaintext
+                    if (attribute.type === "clientAttributes") {
+                        if (attribute.plaintext) {
+                            attribute.plaintext = attribute.plaintext.trim().substring(0, 10000);
+                        }
+                    }
 
                     if (typeof attribute !== "object" || !attribute.type) return false;
                     if (!allAllowed.includes(attribute.type)) return false;
