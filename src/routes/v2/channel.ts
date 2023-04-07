@@ -224,8 +224,9 @@ router.get("/:id/messages", Auth, async (req, res) => {
         query.then(async (messages) => {
             let authorIds = messages.map(m => m.authorId);
             let authors = await getUserBulk(authorIds, quark?._id);
+            console.log(authors)
             for (let i = 0; i < messages.length; i++) {
-                messages[i] = { message: messages[i], author: authors.find(a => a.userId === messages[i].authorId) };
+                messages[i] = { message: messages[i], author: authors.find(a => String(a._id) === String(messages[i].authorId)) };
             }
             //console.timeEnd("getMessages")
             res.json(new Reply(200, true, {message: "Here are the messages", messages}));
