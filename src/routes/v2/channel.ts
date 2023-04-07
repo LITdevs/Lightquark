@@ -13,7 +13,7 @@ import FormData from "form-data";
 import axios from "axios";
 import {subscriptionListener} from "../v1/gateway.js";
 import path from "path";
-import {getNick} from "../../util/getNickname.js";
+import {getNick, getNickBulk} from "../../util/getNickname.js";
 
 const router: Router = express.Router();
 
@@ -198,6 +198,7 @@ router.post("/create", Auth, (req, res) => {
 })
 
 router.get("/:id/messages", Auth, async (req, res) => {
+    //console.time("getMessages")
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
 
@@ -221,9 +222,12 @@ router.get("/:id/messages", Auth, async (req, res) => {
         let query = messages.find({ channelId: req.params.id, timestamp: { $lt: startTimestamp, $gt: endTimestamp } }).sort({ timestamp: endTimestamp === 0 ? -1 : 1 });
         query.limit(50);
         query.then(async (messages) => {
+            let authorIds = messages.map(m => m.authorId);
+            let authors = await getUserBulk(authorIds, quark?._id);
             for (let i = 0; i < messages.length; i++) {
-                messages[i] = { message: messages[i], author: await getUser(messages[i].authorId, quark?._id) };
+                messages[i] = { message: messages[i], author: authors.find(a => a.userId === messages[i].authorId) };
             }
+            //console.timeEnd("getMessages")
             res.json(new Reply(200, true, {message: "Here are the messages", messages}));
         })
     } catch (e) {
@@ -563,6 +567,33 @@ const getUser = async (userId, quarkId) => {
         avatarUri: avatarUri,
         admin: !!user.admin
     };
+}
+
+const getUserBulk = async (userIds, quarkId) => {
+    let Users = db.getLoginUsers();
+    let users = await Users.find({ _id: {$in: userIds} });
+    if (!users) return null;
+    let Avatars = db.getAvatars();
+    let avatars = await Avatars.find({ userId: {$in: userIds} });
+
+
+    let nicks = await getNickBulk(userIds, quarkId);
+
+
+    users.forEach((user, index) => {
+        let avatar = avatars.find(a => a.userId === user._id);
+        let avatarUri = avatar ? avatar.avatarUri : null;
+        if (!avatarUri) avatarUri = `https://auth.litdevs.org/api/avatar/bg/${user._id}`;
+        user.avatarUri = avatarUri;
+
+        users[index] = {
+            _id: user._id,
+            username: nicks.find(n => n.userId === user._id)?.nickname || user.username, // Fallback to username if nickname is not set
+            avatarUri: avatarUri,
+            admin: !!user.admin
+        }
+    })
+    return users;
 }
 
 export { isPermittedToRead, isPermittedToWrite };

@@ -30,6 +30,11 @@
 								...attribute,
 								description: "Unmodified version of a message, used when the user's input is modified in some way to provide an opt-out and improve accessibility."
 							};
+						case "isCat":
+							return {
+								...attribute,
+								description: "Indicates if the author is a cat. Often used to display cat ears."
+							};
 						default:
 							return attribute;
 					}
