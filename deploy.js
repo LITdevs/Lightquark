@@ -1,5 +1,5 @@
 let token = process.env.SPACE_TOKEN;
-let environment = process.env.JB_SPACE_GIT_BRANCH === "dev" ? "lightquark-dev" : "lightquark";
+let environment = process.env.JB_SPACE_GIT_BRANCH === "refs/heads/dev" ? "lightquark-dev" : "lightquark";
 console.log("Branch: ", process.env.JB_SPACE_GIT_BRANCH);
 import axios from "axios";
 /*import {exec} from "child_process";
