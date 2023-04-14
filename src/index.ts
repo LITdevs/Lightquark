@@ -2,7 +2,8 @@ import express, {Request, Response} from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 import db from "./db.js";
-import path from "path";
+import fs from "fs";
+const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
 const app = express();
 
 // Parse JSON bodies
@@ -41,6 +42,10 @@ app.use("/v2/dm", dmv2);
 import home from './routes/home.js';
 app.use("/", home)
 
+app.get("/v*/network", (req : Request, res : Response) => {
+    res.json(networkInformation);
+})
+
 app.get("*", (req : Request, res : Response) => {
     res.status(403).end();
 })
@@ -55,7 +60,6 @@ app.patch("*", (req : Request, res : Response) => {
 })
 
 import gateway from './routes/v1/gateway.js';
-import ServerErrorReply from "./classes/reply/ServerErrorReply.js";
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
     const server = app.listen(port, () => {
