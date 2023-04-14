@@ -1,9 +1,9 @@
 {
-	"name": "Lightquark",
-	"environment": "production",
+	"name": "Lightquark Dev",
+	"environment": "dev",
 	"maintainer": "LIT Devs",
-	"baseUrl": "https://lq.litdevs.org",
-	"iconUri": "https://lq.litdevs.org/alt_icon.svg",
+	"baseUrl": "https://lq-dev.litdevs.org",
+	"iconUri": "https://lq-dev.litdevs.org/alt_alt_alt_icon.png",
 	"authenticationSource": "https://auth.litdevs.org",
-	"gateway": "https://lq-gateway.litdevs.org"
+	"gateway": "https://lq-gateway-dev.litdevs.org"
 }
