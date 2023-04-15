@@ -5,5 +5,5 @@
 	"baseUrl": "https://lq.litdevs.org",
 	"iconUri": "https://lq.litdevs.org/alt_icon.svg",
 	"authenticationSource": "https://auth.litdevs.org",
-	"gateway": "https://lq-gateway.litdevs.org"
+	"gateway": "wss://lq-gateway.litdevs.org"
 }
