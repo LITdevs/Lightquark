@@ -225,7 +225,8 @@ router.get("/:id/messages", Auth, async (req, res) => {
             let authorIds = messages.map(m => m.authorId);
             let authors = await getUserBulk(authorIds, quark?._id);
             for (let i = 0; i < messages.length; i++) {
-                messages[i] = { message: messages[i], author: authors.find(a => String(a._id) === String(messages[i].authorId)) };
+                let author = authors.find(a => String(a._id) === String(messages[i].authorId));
+                messages[i] = { message: messages[i], author };
             }
             //console.timeEnd("getMessages")
             res.json(new Reply(200, true, {message: "Here are the messages", messages}));
@@ -579,16 +580,15 @@ const getUserBulk = async (userIds, quarkId) => {
 
     let nicks = await getNickBulk(userIds, quarkId);
 
-
     users.forEach((user, index) => {
-        let avatar = avatars.find(a => a.userId === user._id);
+        let avatar = avatars.find(a => String(a.userId) === String(user._id));
         let avatarUri = avatar ? avatar.avatarUri : null;
         if (!avatarUri) avatarUri = `https://auth.litdevs.org/api/avatar/bg/${user._id}`;
         user.avatarUri = avatarUri;
 
         users[index] = {
             _id: user._id,
-            username: nicks.find(n => n.userId === user._id)?.nickname || user.username, // Fallback to username if nickname is not set
+            username: nicks.find(n => String(n.userId) === String(user._id))?.nickname || user.username, // Fallback to username if nickname is not set
             avatarUri: avatarUri,
             admin: !!user.admin
         }
