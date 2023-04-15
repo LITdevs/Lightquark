@@ -34,10 +34,10 @@ export async function getNickBulk(userIds, quarkId = null) {
         let nick
 
         // Find global nick if present
-        let globalNick = nicks.find((nick) => nick.userId === userId && nick.scope === "global");
+        let globalNick = nicks.find((nick) => String(nick.userId) === String(userId) && String(nick.scope) === "global");
 
         // Find quark nick if present, or fallback to global nick
-        let quarkNick = nicks.find((nick) => nick.userId === userId && nick.scope.toString() === String(quarkId));
+        let quarkNick = nicks.find((nick) => String(nick.userId) === String(userId) && String(nick.scope) === String(quarkId));
 
         if (globalNick) nick = globalNick;
         if (quarkNick) nick = quarkNick;
