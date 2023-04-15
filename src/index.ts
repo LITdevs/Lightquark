@@ -4,6 +4,7 @@ dotenv.config();
 import db from "./db.js";
 import fs from "fs";
 const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
+const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const app = express();
 
 // Parse JSON bodies
@@ -43,6 +44,7 @@ import home from './routes/home.js';
 app.use("/", home)
 
 app.get("/v*/network", (req : Request, res : Response) => {
+    networkInformation.version = pjson.version;
     res.json(networkInformation);
 })
 
