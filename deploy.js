@@ -11,4 +11,13 @@ axios.post("https://ems-api.litdevs.org/v1/pm2/spacespull", {
 	appName: environment
 }).then((res) => {
 	console.log(res.data);
+	axios.post(`https://api.github.com/repos/LITdevs/Lightquark/commits/${process.env.JB_SPACE_GIT_REVISION}/comments`, {
+			body: `Deployment to ${environment}\n${JSON.stringify(res.data)}`
+		}, {
+		headers: {
+			Authorization: `Bearer ${process.env.GITHUB_TOKEN}`
+		}
+	}).then((res) => {
+		console.log(res.data);
+	})
 });
