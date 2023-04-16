@@ -111,6 +111,11 @@ router.get("/order", Auth, async (req, res) => {
                         order.order.push(quark._id.toString());
                     }
                 })
+                order.order.forEach(quarkId => {
+                    if (!quarks.find((quark) => quark._id.toString() === quarkId)) {
+                        order.order.splice(order.order.indexOf(quarkId), 1);
+                    }
+                })
                 await order.save();
             }
         }

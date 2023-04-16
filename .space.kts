@@ -9,6 +9,7 @@ job("Deploy environment") {
     }
     container(image = "node:18-alpine", displayName = "Deploy environment") {
       	env["SPACE_TOKEN"] = Secrets("space-token")
+      	env["GITHUB_TOKEN"] = Secrets("github-token")
         shellScript {
             interpreter = "/bin/sh"
             content = """
