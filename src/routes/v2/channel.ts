@@ -28,21 +28,15 @@ router.get("/:id", Auth, (req, res) => {
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
     let Channels = db.getChannels();
-    Channels.findOne({ _id: req.params.id }, (err, channel) => {
+    Channels.findOne({ _id: req.params.id }, async (err, channel) => {
         if (err) {
             console.error(err);
             return res.status(500).json(new ServerErrorReply());
         }
         if (!channel) return res.status(404).json(new NotFoundReply("Channel not found"));
-        let Quarks = db.getQuarks();
-        Quarks.findOne({ _id: channel.quark, channels: channel._id, members: res.locals.user._id}, (err, quark) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json(new ServerErrorReply());
-            }
-            if (!quark) return res.status(403).json(new ForbiddenReply("You do not have permission to view this channel"));
-            res.json(new Reply(200, true, {message: "Here is the channel", channel}));
-        })
+        let canRead = await readPermissionCheck(channel._id, res.locals.user._id);
+        if (!canRead.permitted) return res.status(403).json(new ForbiddenReply(canRead.reason));
+        res.json(new Reply(200, true, {message: "Here is the channel", channel }));
     })
 })
 
@@ -203,8 +197,8 @@ router.get("/:id/messages", Auth, async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
 
     try {
-        let canRead = await isPermittedToRead(req.params.id, res.locals.user._id);
-        if (!canRead) return res.status(403).json(new ForbiddenReply("You do not have permission to read this channel"));
+        let canRead = await readPermissionCheck(req.params.id, res.locals.user._id);
+        if (!canRead.permitted) return res.status(403).json(new ForbiddenReply(canRead.reason));
         let messages = db.getMessages();
         // Optionally client can provide a timestamp to get messages before or after
         let startTimestamp = Infinity;
@@ -243,8 +237,8 @@ router.get("/:id/messages/:messageId", Auth, async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
 
     try {
-        let canRead = await isPermittedToRead(req.params.id, res.locals.user._id);
-        if (!canRead) return res.status(403).json(new ForbiddenReply("You do not have permission to read this channel"));
+        let canRead = await readPermissionCheck(req.params.id, res.locals.user._id);
+        if (!canRead.permitted) return res.status(403).json(new ForbiddenReply(canRead.reason));
         let messages = db.getMessages();
 
         let Quark = db.getQuarks();
@@ -528,15 +522,15 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
  * @param channelId
  * @param userId
  */
-const isPermittedToRead = (channelId, userId) => {
-    return new Promise((resolve, reject) => {
-        let Quarks = db.getQuarks();
-        Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) }, (err, quark) => {
-            if (err) return reject(err);
-            // DO NOT CONSOLE.LOG THIS
-            resolve(!!quark);
-        });
-    })
+const readPermissionCheck = async (channelId, userId) => {
+    let Quarks = db.getQuarks();
+    // Find quark where channel exists, and user is a member
+    let quark = await Quarks.findOne({ channels: new mongoose.Types.ObjectId(channelId) });
+    if (!quark) return {permitted: false, reason: "This channel does not exist"};
+    if (!quark.members.includes(userId)) return {permitted: false, reason: "You are not a member of the quark this channel is in"};
+    // Check permissions
+    // TODO: Role system
+    return {permitted: true};
 }
 
 /**
@@ -596,5 +590,5 @@ const getUserBulk = async (userIds, quarkId) => {
     return users;
 }
 
-export { isPermittedToRead, isPermittedToWrite };
+export { readPermissionCheck, isPermittedToWrite };
 export default router;
