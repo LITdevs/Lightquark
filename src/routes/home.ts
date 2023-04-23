@@ -75,4 +75,46 @@ router.get("/features/:clientName", async (req: Request, res: Response) => {
 	}
 })
 
+router.get("/v*/stats", (req : Request, res : Response) => {
+	let Messages = db.getMessages();
+	let Quarks = db.getQuarks();
+	let Channels = db.getChannels();
+
+	let messageCount
+	let quarkCount
+	let channelCount
+
+	let earliestMessage
+	let latestMessage
+
+	let messageCountPromise = Messages.countDocuments().then(count => {
+		messageCount = count
+	});
+	let quarkCountPromise = Quarks.countDocuments().then(count => {
+		quarkCount = count
+	});
+
+	let channelCountPromise = Channels.countDocuments().then(count => {
+		channelCount = count
+	});
+
+	let earliestMessagePromise = Messages.findOne().sort({timestamp: 1}).then(message => {
+		earliestMessage = message.timestamp
+	});
+
+	let latestMessagePromise = Messages.findOne().sort({timestamp: -1}).then(message => {
+		latestMessage = message.timestamp
+	});
+
+	Promise.all([messageCountPromise, quarkCountPromise, channelCountPromise, earliestMessagePromise, latestMessagePromise]).then(() => {
+		res.json({
+			messageCount,
+			quarkCount,
+			channelCount,
+			earliestMessage,
+			latestMessage
+		})
+	})
+})
+
 export default router;
