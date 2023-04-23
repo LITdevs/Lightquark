@@ -461,7 +461,7 @@ router.patch("/:id", Auth, (req, res) => {
             });
         }
         // Update invite
-        if (req.body.invite) {
+        if (req.body.invite && typeof req.body.invite === "string") {
             req.body.invite = req.body.invite.replace(/[^A-Za-z0-9-_.]/g, "-").toLowerCase();
             if (req.body.invite.trim().length > 16) return res.status(400).json(new Reply(400, false, {message: "Invite must be less than 16 characters"}));
             quark.invite = req.body.invite;
