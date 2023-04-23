@@ -62,7 +62,7 @@ router.delete("/:id", Auth, (req, res) => {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
             }
-            const canDelete = await writePermissionCheck(channel._id, res.locals.user._id, "deleteChannel", channel);
+            const canDelete = await writePermissionCheck(channel._id, res.locals.user._id, "channelDelete", channel);
             if (!canDelete.permitted) return res.status(403).json(new ForbiddenReply(canDelete.reason));
             // Remove channel from quark
             quark.channels.splice(quark.channels.indexOf(channel._id), 1);
@@ -117,7 +117,7 @@ router.patch("/:id", Auth, (req, res) => {
                 return res.status(500).json(new ServerErrorReply());
             }
 
-            const canEdit = await writePermissionCheck(channel._id, res.locals.user._id, "editChannel", channel);
+            const canEdit = await writePermissionCheck(channel._id, res.locals.user._id, "channelEdit", channel);
             if (!canEdit.permitted) return res.status(403).json(new ForbiddenReply(canEdit.reason));
 
             // Update name
@@ -433,7 +433,7 @@ router.delete("/:id/messages/:messageId", Auth, (req, res) => {
         }
         if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
         // Check permissions
-        const canDelete = await writePermissionCheck(req.params.id, res.locals.user._id, "deleteMessage", message);
+        const canDelete = await writePermissionCheck(req.params.id, res.locals.user._id, "messageDelete", message);
         if (!canDelete.permitted) return res.status(403).json(new ForbiddenReply(canDelete.reason));
         // Send pipe bomb
         Messages.deleteOne({ _id: req.params.messageId }, (err) => {
@@ -484,7 +484,7 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
         }
         if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
         // Check permissions
-        const canEdit = await writePermissionCheck(req.params.id, res.locals.user._id, "editMessage", message);
+        const canEdit = await writePermissionCheck(req.params.id, res.locals.user._id, "messageEdit", message);
         if (!canEdit.permitted) return res.status(403).json(new ForbiddenReply(canEdit.reason));
         // Send pipe bomb
         message.content = req.body.content.trim();
@@ -558,11 +558,11 @@ const writePermissionCheck = async (channelId, userId, scope, object: any = unde
             return {permitted: true};
         case "channelEdit":
             if (!object) return {permitted: false, reason: "Channel is required for this scope (If you are seeing this, please report it to the developers)"};
-            if (quark.owners.includes(userId)) return {permitted: false, reason: "You do not have permission to edit this channel"};
+            if (!quark.owners.includes(userId)) return {permitted: false, reason: "You do not have permission to edit this channel"};
             return {permitted: true};
         case "channelDelete":
             if (!object) return {permitted: false, reason: "Channel is required for this scope (If you are seeing this, please report it to the developers)"};
-            if (quark.owners.includes(userId)) return {permitted: false, reason: "You do not have permission to delete this channel"};
+            if (!quark.owners.includes(userId)) return {permitted: false, reason: "You do not have permission to delete this channel"};
             return {permitted: true};
         case "messageEdit":
             if (!object) return {permitted: false, reason: "Message is required for this scope (If you are seeing this, please report it to the developers)"};
