@@ -105,19 +105,18 @@ router.get("/order", Auth, async (req, res) => {
             let Quarks = db.getQuarks();
             let quarks = await Quarks.find({members: res.locals.user._id});
 
-            if (order.order.length !== quarks.length) {
-                quarks.forEach(quark => {
-                    if (!order.order.includes(quark._id.toString())) {
-                        order.order.push(quark._id.toString());
-                    }
-                })
-                order.order.forEach(quarkId => {
-                    if (!quarks.find((quark) => quark._id.toString() === quarkId)) {
-                        order.order.splice(order.order.indexOf(quarkId), 1);
-                    }
-                })
-                await order.save();
-            }
+            quarks.forEach(quark => {
+                if (!order.order.includes(quark._id.toString())) {
+                    order.order.push(quark._id.toString());
+                }
+            })
+            order.order.forEach(quarkId => {
+                if (!quarks.find((quark) => quark._id.toString() === quarkId)) {
+                    order.order.splice(order.order.indexOf(quarkId), 1);
+                }
+            })
+            await order.save();
+
         }
 
         res.json(new Reply(200, true, {order: order.order}));
