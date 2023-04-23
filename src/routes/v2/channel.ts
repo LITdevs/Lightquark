@@ -8,7 +8,7 @@ import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {isValidObjectId} from "mongoose";
 import NotFoundReply from "../../classes/reply/NotFoundReply.js";
 import ForbiddenReply from "../../classes/reply/ForbiddenReply.js";
-import fs from "fs";
+import fs, {write} from "fs";
 import FormData from "form-data";
 import axios from "axios";
 import {subscriptionListener} from "../v1/gateway.js";
@@ -28,21 +28,15 @@ router.get("/:id", Auth, (req, res) => {
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
     let Channels = db.getChannels();
-    Channels.findOne({ _id: req.params.id }, (err, channel) => {
+    Channels.findOne({ _id: req.params.id }, async (err, channel) => {
         if (err) {
             console.error(err);
             return res.status(500).json(new ServerErrorReply());
         }
         if (!channel) return res.status(404).json(new NotFoundReply("Channel not found"));
-        let Quarks = db.getQuarks();
-        Quarks.findOne({ _id: channel.quark, channels: channel._id, members: res.locals.user._id}, (err, quark) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json(new ServerErrorReply());
-            }
-            if (!quark) return res.status(403).json(new ForbiddenReply("You do not have permission to view this channel"));
-            res.json(new Reply(200, true, {message: "Here is the channel", channel}));
-        })
+        let canRead = await readPermissionCheck(channel._id, res.locals.user._id);
+        if (!canRead.permitted) return res.status(403).json(new ForbiddenReply(canRead.reason));
+        res.json(new Reply(200, true, {message: "Here is the channel", channel }));
     })
 })
 
@@ -63,12 +57,13 @@ router.delete("/:id", Auth, (req, res) => {
         if (!channel) return res.status(404).json(new NotFoundReply("Channel not found"));
         let Quarks = db.getQuarks();
         // If the user is the owner of the quark, they can delete channels in it
-        Quarks.findOne({ _id: channel.quark, channels: channel._id, owners: res.locals.user._id}, (err, quark) => {
+        Quarks.findOne({ _id: channel.quark, channels: channel._id, owners: res.locals.user._id}, async (err, quark) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
             }
-            if (!quark) return res.status(403).json(new ForbiddenReply("You do not have permission to delete this channel"));
+            const canDelete = await writePermissionCheck(channel._id, res.locals.user._id, "channelDelete", channel);
+            if (!canDelete.permitted) return res.status(403).json(new ForbiddenReply(canDelete.reason));
             // Remove channel from quark
             quark.channels.splice(quark.channels.indexOf(channel._id), 1);
             // Delete channel
@@ -116,13 +111,15 @@ router.patch("/:id", Auth, (req, res) => {
         }
         if (!channel) return res.status(404).json(new NotFoundReply("Channel not found"));
         let Quarks = db.getQuarks();
-        Quarks.findOne({ _id: channel.quark, channels: channel._id, owners: res.locals.user._id}, (err, quark) => {
+        Quarks.findOne({ _id: channel.quark, channels: channel._id, owners: res.locals.user._id}, async (err, quark) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
             }
-            if (!quark) return res.status(404).json(new NotFoundReply("Editable quark not found"))
-            if (!quark.owners.includes(res.locals.user._id)) return res.status(403).json(new Reply(403, false, {message: "You are not an owner of this quark"}));
+
+            const canEdit = await writePermissionCheck(channel._id, res.locals.user._id, "channelEdit", channel);
+            if (!canEdit.permitted) return res.status(403).json(new ForbiddenReply(canEdit.reason));
+
             // Update name
             if (req.body.name) {
                 if (req.body.name.length > 64) return res.status(400).json(new Reply(400, false, {message: "Name must be less than 64 characters"}));
@@ -203,8 +200,8 @@ router.get("/:id/messages", Auth, async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
 
     try {
-        let canRead = await isPermittedToRead(req.params.id, res.locals.user._id);
-        if (!canRead) return res.status(403).json(new ForbiddenReply("You do not have permission to read this channel"));
+        let canRead = await readPermissionCheck(req.params.id, res.locals.user._id);
+        if (!canRead.permitted) return res.status(403).json(new ForbiddenReply(canRead.reason));
         let messages = db.getMessages();
         // Optionally client can provide a timestamp to get messages before or after
         let startTimestamp = Infinity;
@@ -243,8 +240,8 @@ router.get("/:id/messages/:messageId", Auth, async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
 
     try {
-        let canRead = await isPermittedToRead(req.params.id, res.locals.user._id);
-        if (!canRead) return res.status(403).json(new ForbiddenReply("You do not have permission to read this channel"));
+        let canRead = await readPermissionCheck(req.params.id, res.locals.user._id);
+        if (!canRead.permitted) return res.status(403).json(new ForbiddenReply(canRead.reason));
         let messages = db.getMessages();
 
         let Quark = db.getQuarks();
@@ -279,8 +276,8 @@ router.post("/:id/messages", Auth, async (req, res) => {
         if (req.body.content && req.body.content.trim().length > 10000) return res.status(400).json(new Reply(400, false, {message: "Message content must be less than 10000 characters"}));
         if (req.body.attachments && !Array.isArray(req.body.attachments)) return res.status(400).json(new InvalidReplyMessage("Attachments must be an array"));
         if (req.body.attachments && req.body.attachments.length > 10) return res.status(400).json(new Reply(400, false, {message: "You can only attach 10 files per message"}));
-        let canWrite = await isPermittedToWrite(req.params.id, res.locals.user._id);
-        if (!canWrite) return res.status(403).json(new ForbiddenReply("You do not have permission to send messages to this channel"));
+        let canWrite = await writePermissionCheck(req.params.id, res.locals.user._id, "send");
+        if (!canWrite.permitted) return res.status(403).json(new ForbiddenReply(canWrite.reason));
         let Message = db.getMessages();
         let ua = req.headers['lq-agent'];
         if (!ua) ua = "Unknown";
@@ -429,14 +426,15 @@ router.delete("/:id/messages/:messageId", Auth, (req, res) => {
 
     // Find message
     let Messages = db.getMessages();
-    Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, (err, message) => {
+    Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, async (err, message) => {
         if (err) {
             console.error(err);
             return res.status(500).json(new ServerErrorReply());
         }
         if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
-        // Does author match
-        if (message.authorId.toString() !== res.locals.user._id.toString()) return res.status(403).json(new ForbiddenReply("You do not have permission to delete this message"));
+        // Check permissions
+        const canDelete = await writePermissionCheck(req.params.id, res.locals.user._id, "messageDelete", message);
+        if (!canDelete.permitted) return res.status(403).json(new ForbiddenReply(canDelete.reason));
         // Send pipe bomb
         Messages.deleteOne({ _id: req.params.messageId }, (err) => {
             if (err) {
@@ -475,18 +473,19 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
     if (!req.params.messageId) return res.status(400).json(new InvalidReplyMessage("Provide a message id"));
     if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
     if (!req.body.content) return res.status(400).json(new InvalidReplyMessage("Provide a message content"));
-    if (req.body.content.trim().length > 2000) return res.status(400).json(new InvalidReplyMessage("Message content must be less than 2000 characters"));
+    if (req.body.content.trim().length > 10000) return res.status(400).json(new InvalidReplyMessage("Message content must be less than 10000 characters"));
     if (req.body.attachments) return res.status(501).json(new Reply(501, false, { message: "Attachments cannot be edited yet" }));
     // Find message
     let Messages = db.getMessages();
-    Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, (err, message) => {
+    Messages.findOne({ _id: req.params.messageId, channelId: req.params.id }, async (err, message) => {
         if (err) {
             console.error(err);
             return res.status(500).json(new ServerErrorReply());
         }
         if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
-        // Does author match
-        if (message.authorId.toString() !== res.locals.user._id.toString()) return res.status(403).json(new ForbiddenReply("You do not have permission to edit this message"));
+        // Check permissions
+        const canEdit = await writePermissionCheck(req.params.id, res.locals.user._id, "messageEdit", message);
+        if (!canEdit.permitted) return res.status(403).json(new ForbiddenReply(canEdit.reason));
         // Send pipe bomb
         message.content = req.body.content.trim();
         if (req.body.clientAttributes) {
@@ -498,7 +497,7 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
             else message.specialAttributes.push(req.body.clientAttributes);
         }
         message.edited = true;
-        message.save(async (err) => {
+        await message.save(async (err) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json(new ServerErrorReply());
@@ -528,30 +527,54 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
  * @param channelId
  * @param userId
  */
-const isPermittedToRead = (channelId, userId) => {
-    return new Promise((resolve, reject) => {
-        let Quarks = db.getQuarks();
-        Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) }, (err, quark) => {
-            if (err) return reject(err);
-            // DO NOT CONSOLE.LOG THIS
-            resolve(!!quark);
-        });
-    })
+const readPermissionCheck = async (channelId, userId) => {
+    let Quarks = db.getQuarks();
+    // Find quark where channel exists, and user is a member
+    let quark = await Quarks.findOne({ channels: new mongoose.Types.ObjectId(channelId) });
+    if (!quark) return {permitted: false, reason: "This channel does not exist"};
+    if (!quark.members.includes(userId)) return {permitted: false, reason: "You are not a member of the quark this channel is in"};
+    // Check permissions
+    // TODO: Role system
+    return {permitted: true};
 }
 
 /**
  * Check if a user has permission to send messages to a channel
- * @param channelId
- * @param userId
+ * @param channelId The channel to evaluate permissions in
+ * @param userId The user to evaluate permissions for
+ * @param scope The scope of the permission check
+ * @param object The object being edited or deleted, message or channel
  */
-const isPermittedToWrite = (channelId, userId) => {
-    return new Promise((resolve, reject) => {
-        let Quarks = db.getQuarks();
-        Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) }, (err, quark) => {
-            if (err) return reject(err);
-            resolve(!!quark);
-        });
-    })
+const writePermissionCheck = async (channelId, userId, scope, object: any = undefined) => {
+    let Quarks = db.getQuarks();
+    // Find quark where channel exists, and user is a member
+    let quark = await Quarks.findOne({ channels: new mongoose.Types.ObjectId(channelId) });
+    if (!quark) return {permitted: false, reason: "This channel does not exist"};
+    if (!quark.members.includes(userId)) return {permitted: false, reason: "You are not a member of the quark this channel is in"};
+    // Check permissions
+    // TODO: Role system
+    switch (scope) {
+        case "send":
+            return {permitted: true};
+        case "channelEdit":
+            if (!object) return {permitted: false, reason: "Channel is required for this scope (If you are seeing this, please report it to the developers)"};
+            if (!quark.owners.includes(userId)) return {permitted: false, reason: "You do not have permission to edit this channel"};
+            return {permitted: true};
+        case "channelDelete":
+            if (!object) return {permitted: false, reason: "Channel is required for this scope (If you are seeing this, please report it to the developers)"};
+            if (!quark.owners.includes(userId)) return {permitted: false, reason: "You do not have permission to delete this channel"};
+            return {permitted: true};
+        case "messageEdit":
+            if (!object) return {permitted: false, reason: "Message is required for this scope (If you are seeing this, please report it to the developers)"};
+            if (object.authorId.toString() !== userId.toString()) return {permitted: false, reason: "You do not have permission to edit this message"};
+            return {permitted: true};
+        case "messageDelete":
+            if (!object) return {permitted: false, reason: "Message is required for this scope (If you are seeing this, please report it to the developers)"};
+            if (object.authorId.toString() !== userId.toString()) return {permitted: false, reason: "You do not have permission to delete this message"};
+            return {permitted: true};
+        default:
+            return {permitted: false, reason: "Invalid scope (If you are seeing this, please report it to the developers)"};
+    }
 }
 
 const getUser = async (userId, quarkId) => {
@@ -596,5 +619,5 @@ const getUserBulk = async (userIds, quarkId) => {
     return users;
 }
 
-export { isPermittedToRead, isPermittedToWrite };
+export { readPermissionCheck, writePermissionCheck };
 export default router;
