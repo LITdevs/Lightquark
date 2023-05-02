@@ -7,6 +7,10 @@
 		{
 			"name": "Quarklight",
 			"capabilityUrl": "https://raw.githubusercontent.com/vtheskeleton/quarklight/prod/capabilities.json"
+		},
+		{
+			"name": "Pisscord",
+			"capabilityUrl": "https://raw.githubusercontent.com/mitchellonii/pisscord/main/capabilities.json"
 		}
 	]
 }

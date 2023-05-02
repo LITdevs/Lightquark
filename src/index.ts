@@ -1,4 +1,4 @@
-import express, {Request, Response} from 'express';
+import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 import db from "./db.js";
@@ -17,6 +17,12 @@ app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "*");
     res.header("Access-Control-Allow-Methods", "*");
+
+    // Define reply method, to set status code accordingly
+    res.reply = (reply) => {
+        res.status(reply.request.status_code).json(reply);
+    }
+
     next();
 })
 
@@ -43,21 +49,21 @@ app.use("/v2/dm", dmv2);
 import home from './routes/home.js';
 app.use("/", home)
 
-app.get("/v*/network", (req : Request, res : Response) => {
+app.get("/v*/network", (req, res) => {
     networkInformation.version = pjson.version;
     res.json(networkInformation);
 })
 
-app.get("*", (req : Request, res : Response) => {
+app.get("*", (req, res) => {
     res.status(403).end();
 })
-app.post("*", (req : Request, res : Response) => {
+app.post("*", (req, res) => {
     res.status(403).end();
 })
-app.put("*", (req : Request, res : Response) => {
+app.put("*", (req, res) => {
     res.status(403).end();
 })
-app.patch("*", (req : Request, res : Response) => {
+app.patch("*", (req, res) => {
     res.status(403).end();
 })
 

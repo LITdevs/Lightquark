@@ -1,4 +1,4 @@
-import express, {Request, Response, Router} from 'express';
+import express from 'express';
 import Reply from "../../classes/reply/Reply.js";
 import { Auth } from './auth.js';
 import db from "../../db.js";
@@ -14,7 +14,7 @@ import axios from "axios";
 import {subscriptionListener} from "./gateway.js";
 import {getNick} from "../../util/getNickname.js";
 
-const router: Router = express.Router();
+const router = express.Router();
 
 /**
  * Get servers that the user is a member of.

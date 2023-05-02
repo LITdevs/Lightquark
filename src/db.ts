@@ -9,6 +9,7 @@ import channelSchema from "./schemas/channelSchema.js";
 import messageSchema from "./schemas/messageSchema.js";
 import quarkOrderSchema from "./schemas/quarkOrderSchema.js";
 import nicknameSchema from "./schemas/nicknameSchema.js";
+import emoteSchema from "./schemas/emoteSchema.js";
 
 const LOGINDB_URI : string | undefined = process.env.LOGINDB_URI
 if (typeof LOGINDB_URI === "undefined") {
@@ -22,7 +23,7 @@ if (typeof LQDB_URI === "undefined") {
 }
 
 const dbEvents = new EventEmitter();
-export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks };
+export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes };
 
 const logindb = mongoose.createConnection(LOGINDB_URI)
 
@@ -40,13 +41,15 @@ let Channels
 let Messages
 let QuarkOrders
 let Nicks
+let Emotes
 lqdb.once("open", () => {
-    Avatars = lqdb.model('avatar', userAvatarSchema)
-    Quarks = lqdb.model('quark', quarkSchema)
-    Channels = lqdb.model('channel', channelSchema)
-    Messages = lqdb.model('message', messageSchema)
-    QuarkOrders = lqdb.model('quarkOrder', quarkOrderSchema)
-    Nicks = lqdb.model('nick', nicknameSchema)
+    Avatars = lqdb.model('avatar', userAvatarSchema);
+    Quarks = lqdb.model('quark', quarkSchema);
+    Channels = lqdb.model('channel', channelSchema);
+    Messages = lqdb.model('message', messageSchema);
+    QuarkOrders = lqdb.model('quarkOrder', quarkOrderSchema);
+    Nicks = lqdb.model('nick', nicknameSchema);
+    Emotes = lqdb.model('emote', emoteSchema);
     dbEvents.emit("lq_ready");
 })
 
@@ -76,4 +79,8 @@ function getQuarkOrders() {
 
 function getNicks() {
     return Nicks;
+}
+
+function getEmotes() {
+    return Emotes;
 }

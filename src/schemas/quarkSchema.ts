@@ -5,7 +5,7 @@ export default new Mongoose.Schema({
     members: Array,
     name: String,
     iconUri: String,
-    emotes: Array,
+    //emotes: Array, lol no this is dumb
     roles: Array,
     bans: Array,
     channels: Array,

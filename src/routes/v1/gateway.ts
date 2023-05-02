@@ -49,6 +49,7 @@ export default (server) => {
             ws.on("message", (message) => {
                 handleMessage(message, ws, user, socketId).catch(err => {
                     console.error(err);
+                    // @ts-ignore
                     ws.send({message: "Internal Server Error", event: "error", code: 500});
                 });
             });

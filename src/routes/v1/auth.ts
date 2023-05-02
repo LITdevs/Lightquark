@@ -1,4 +1,4 @@
-import express, {Request, Response, Router} from 'express';
+import express from 'express';
 import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import db from "../../db.js";
 import ServerErrorReply from "../../classes/reply/ServerErrorReply.js";
@@ -9,10 +9,10 @@ import * as jose from "jose";
 import UnauthorizedReply from "../../classes/reply/UnauthorizedReply.js";
 import {getNick} from "../../util/getNickname.js";
 
-const router: Router = express.Router();
+const router = express.Router();
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-router.post("/token", (req: Request, res: Response) => {
+router.post("/token", (req, res) => {
     if (!req?.body?.password || !req?.body?.email) return res.status(400).json(new InvalidReplyMessage("Request body must include an email-password pair"))
 
     /**
