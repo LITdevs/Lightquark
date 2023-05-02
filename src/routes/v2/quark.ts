@@ -17,6 +17,8 @@ import sharp from "sharp";
 
 const router = express.Router();
 
+
+
 /**
  * Get servers that the user is a member of.
  * Servers are called Quarks.
@@ -631,16 +633,18 @@ router.delete("/:id/emotes/:emoteId", Auth, async (req, res) => {
     }
 })
 
-router.get("/:id/emotes/:emoteId", Auth, async (req, res) => {
+router.get("/emotes/:emoteId", async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.emoteId)) return res.status(400).json(new InvalidReplyMessage("Invalid emote id"));
     let Emotes = db.getEmotes();
-    let emote = await Emotes.findOne({_id: req.params.emoteId, quark: req.params.id});
+    let emote = await Emotes.findOne({_id: req.params.emoteId});
     if (!emote) return res.status(404).json(new NotFoundReply("Emote not found"));
     res.reply(new Reply(200, true, {message: "Emote found", emote}));
 });
 
-router.get("/:id/emotes/:emoteId/image", async (req, res) => {
+router.get("/emotes/:emoteId/image", async (req, res) => {
+    if (!mongoose.isValidObjectId(req.params.emoteId)) return res.status(400).json(new InvalidReplyMessage("Invalid emote id"));
     let Emotes = db.getEmotes();
-    let emote = await Emotes.findOne({_id: req.params.emoteId, quark: req.params.id});
+    let emote = await Emotes.findOne({_id: req.params.emoteId});
     if (!emote) return res.status(404).json(new NotFoundReply("Emote not found"));
     res.redirect(emote.imageUri);
 });
