@@ -1,21 +1,21 @@
-import express, {Request, Response, Router} from 'express';
+import express from 'express';
 import path from "path";
 
-const router: Router = express.Router();
+const router = express.Router();
 
-router.get("/", (req: Request, res: Response) => {
+router.get("/", (req, res) => {
 	res.sendFile("public/index.html", {root: path.resolve()});
 })
 
-router.get("/developers/interoperability", (req: Request, res: Response) => {
+router.get("/developers/interoperability", (req, res) => {
 	res.sendFile("public/interop.html", {root: path.resolve()});
 })
 
-router.get("/developers/interoperability/clientAttributeSearch", (req: Request, res: Response) => {
+router.get("/developers/interoperability/clientAttributeSearch", (req, res) => {
 	res.sendFile("public/clientAttributeSearch.html", {root: path.resolve()});
 })
 
-router.get("/developers/interoperability/api/attributes", async (req: Request, res: Response) => {
+router.get("/developers/interoperability/api/attributes", async (req, res) => {
 	const Messages = db.getMessages();
 
 	// Perform black magic to find all keys in clientAttributes
@@ -38,17 +38,17 @@ router.get("/developers/interoperability/api/attributes", async (req: Request, r
 	res.json(keys);
 })
 
-router.get("/v1/ping", (req : Request, res : Response) => {
+router.get("/v1/ping", (req, res ) => {
 	res.contentType("text/plain");
 	res.send("pong");
 })
 
-router.get("/d/:quarkId/:channelId?/:messageId?", (req: Request, res: Response) => {
+router.get("/d/:quarkId/:channelId?/:messageId?", (req, res) => {
 	let lqLink = `lightquark://${req.params.quarkId}${req.params.channelId ? `/${req.params.channelId}`: ""}${req.params.messageId ? `/${req.params.messageId}`: ""}`
 	res.redirect(lqLink)
 })
 
-router.get("/features", (req: Request, res: Response) => {
+router.get("/features", (req, res) => {
 	res.sendFile("public/features.html", {root: path.resolve()});
 })
 
@@ -59,7 +59,7 @@ import CapabilityParser from "../util/CapabilityParser.js";
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
 import db from "../db.js";
 
-router.get("/features/:clientName", async (req: Request, res: Response) => {
+router.get("/features/:clientName", async (req, res) => {
 	try {
 		let client = knownClients.knownClients.find(client => client.name === req.params.clientName);
 		if (!client) {
@@ -75,7 +75,7 @@ router.get("/features/:clientName", async (req: Request, res: Response) => {
 	}
 })
 
-router.get("/v*/stats", (req : Request, res : Response) => {
+router.get("/v*/stats", (req, res ) => {
 	let Messages = db.getMessages();
 	let Quarks = db.getQuarks();
 	let Channels = db.getChannels();

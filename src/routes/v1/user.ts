@@ -1,4 +1,4 @@
-import express, {Request, Response, Router} from 'express';
+import express from 'express';
 import db from "../../db.js";
 import FormData from 'form-data';
 import fs from "fs";
@@ -13,7 +13,7 @@ import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {subscriptionListener} from "./gateway.js";
 import {getNick} from "../../util/getNickname.js";
 
-const router: Router = express.Router();
+const router = express.Router();
 
 router.get("/me", Auth, (req, res) => {
     res.send(new Reply(200, true, {message: "Here is the data from your JWT, it is valid", jwtData: res.locals.user}));
