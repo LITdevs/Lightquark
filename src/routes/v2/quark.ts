@@ -399,6 +399,7 @@ router.patch("/:id", Auth, async (req, res) => {
         // Update owner list
         if (req.body.owners) {
             if (!Array.isArray(req.body.owners)) return res.status(400).json(new Reply(400, false, {message: "Owners must be an array"}));
+            if (req.body.owners.length < 1) return res.status(400).json(new Reply(400, false, {message: "Quark must have at least one owner"}));
             let stop = false;
             let erMsg = "";
             req.body.owners.forEach((owner) => {
