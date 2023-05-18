@@ -12,7 +12,7 @@ import {getNick} from "../../util/getNickname.js";
 const router = express.Router();
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
-router.post("/token", (req, res) => {
+router.post("/token", async (req, res) => {
     if (!req?.body?.password || !req?.body?.email) return res.status(400).json(new InvalidReplyMessage("Request body must include an email-password pair"))
 
     /**
@@ -32,37 +32,41 @@ router.post("/token", (req, res) => {
 
     // Find LoginUser
     let LoginUsers = db.getLoginUsers();
-    LoginUsers.findOne({email: req.body.email}, (err, loginUser) => {
+    let loginUser;
+    try {
+        loginUser = await LoginUsers.findOne({email: req.body.email});
+    } catch (err) {
         if (handleErr(err)) return;
+    }
 
-        if (!loginUser) return res.status(404).json(new NotFoundReply("No such user"));
+    if (!loginUser) return res.status(404).json(new NotFoundReply("No such user"));
 
-        crypto.pbkdf2(req.body.password, loginUser.salt, 310000, 32, "sha256", (err, pwdHash) => {
+    crypto.pbkdf2(req.body.password, loginUser.salt, 310000, 32, "sha256", async (err, pwdHash) => {
+        if (handleErr(err)) return;
+        let match = crypto.timingSafeEqual(pwdHash, loginUser.passwordHash);
+        if (!match) return res.status(400).json(new InvalidReplyMessage("Incorrect password/email address combination"));
+
+        // User is "logged in" - Password is correct and matches provided email
+        // Lets pull some tokens from ** *** ***
+        let Avatars = db.getAvatars();
+        try {
+            let avatar = await Avatars.findOne({userId: loginUser._id});
+            let avatarUri = avatar?.avatarUri;
+            if (!avatarUri) {
+                avatarUri = `https://auth.litdevs.org/api/avatar/bg/${loginUser._id}`;
+            }
+            new jose.SignJWT({ admin: !!loginUser.admin, isBot: !!loginUser.isBot, email: loginUser.email, username: await getNick(loginUser._id), _id: loginUser._id, avatar: avatarUri })
+                .setProtectedHeader({ alg: 'HS256', typ: "JWT" })
+                .setIssuedAt()
+                .setIssuer('Lightquark')
+                .setAudience('Lightquark-client')
+                .setExpirationTime('1y')
+                .sign(secret).then(jwt => {
+                return res.json(new Reply(200, true, { message: "Here are your tokens!", token_type: "Bearer", access_token: jwt }))
+            })
+        } catch (err) {
             if (handleErr(err)) return;
-            let match = crypto.timingSafeEqual(pwdHash, loginUser.passwordHash);
-            if (!match) return res.status(400).json(new InvalidReplyMessage("Incorrect password/email address combination"));
-
-            // User is "logged in" - Password is correct and matches provided email, and permitted to use EMS
-            // Lets pull some tokens from ** *** ***
-            let Avatars = db.getAvatars();
-
-            Avatars.findOne({userId: loginUser._id}, async (err, avatar) => {
-                if (handleErr(err)) return;
-                let avatarUri = avatar?.avatarUri;
-                if (!avatarUri) {
-                    avatarUri = `https://auth.litdevs.org/api/avatar/bg/${loginUser._id}`;
-                }
-                new jose.SignJWT({ admin: !!loginUser.admin, isBot: !!loginUser.isBot, email: loginUser.email, username: await getNick(loginUser._id), _id: loginUser._id, avatar: avatarUri })
-                    .setProtectedHeader({ alg: 'HS256', typ: "JWT" })
-                    .setIssuedAt()
-                    .setIssuer('Lightquark')
-                    .setAudience('Lightquark-client')
-                    .setExpirationTime('1y')
-                    .sign(secret).then(jwt => {
-                    return res.json(new Reply(200, true, { message: "Here are your tokens!", token_type: "Bearer", access_token: jwt }))
-                })
-            });
-        })
+        }
     })
 })
 
@@ -86,15 +90,16 @@ async function Auth(req, res, next) {
 
         // Update avatar from database
         let Avatars = db.getAvatars();
-        Avatars.findOne({userId: payload._id}, async (err, avatar) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json(new ServerErrorReply());
-            }
+        try {
+            let avatar = await Avatars.findOne({userId: payload._id});
             let avatarUri = avatar?.avatarUri;
             if (avatarUri) res.locals.user.avatar = avatarUri;
             return next();
-        })
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json(new ServerErrorReply());
+
+        }
     } catch (e : any) {
         if (["ERR_JWT_CLAIM_VALIDATION_FAILED", "ERR_JWS_INVALID", "ERR_JWS_SIGNATURE_VERIFICATION_FAILED", "ERR_JWT_EXPIRED"].includes(e.code)) {
             return res.status(401).json(new UnauthorizedReply(e.code));

@@ -15,6 +15,11 @@ import {getNick} from "../../util/getNickname.js";
 
 const router = express.Router();
 
+
+router.all("*", Auth, (req, res) => {
+    res.redirect(req.originalUrl.replace("/v1", "/v2"));
+})
+
 router.get("/me", Auth, (req, res) => {
     res.send(new Reply(200, true, {message: "Here is the data from your JWT, it is valid", jwtData: res.locals.user}));
 });

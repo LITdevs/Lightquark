@@ -17,8 +17,8 @@ import {getNick} from "../../util/getNickname.js";
 
 const router = express.Router();
 
-router.all("/", Auth, (req, res) => {
-    res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
+router.all("*", Auth, (req, res) => {
+    res.redirect(req.originalUrl.replace("/v1", "/v2"));
 })
 
 /**
@@ -429,13 +429,14 @@ router.patch("/:id/messages/:messageId", Auth, (req, res) => {
  * @param userId
  */
 const isPermittedToRead = (channelId, userId) => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         let Quarks = db.getQuarks();
-        Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) }, (err, quark) => {
-            if (err) return reject(err);
-            // DO NOT CONSOLE.LOG THIS
+        try {
+            let quark = await Quarks.findOne({ members: userId, channels: new mongoose.Types.ObjectId(channelId) });
             resolve(!!quark);
-        });
+        } catch (err) {
+            return reject(err);
+        }
     })
 }
 

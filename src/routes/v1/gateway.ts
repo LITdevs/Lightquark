@@ -119,18 +119,19 @@ async function handleMessage(message, ws, user, socketId) {
                 })
             } else if (event.split("_")[0] === "quark") {
                 let Quarks = db.getQuarks();
-                Quarks.findOne({_id: event.split("_")[1], members: user._id}, (err, quark) => {
-                    if (err) {
-                        console.error(err);
-                        return ws.send(JSON.stringify({eventId: "error", message: "Internal Server Error", code: 500}));
-                    }
+                try {
+                    let quark = await Quarks.findOne({_id: event.split("_")[1], members: user._id});
                     if (!quark) return ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403}));
                     const sub = (data) => {
                         ws.send(JSON.stringify(data));
                     }
                     sm.subscribe(event, sub, user, socketId);
                     ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
-                });
+
+                } catch (err) {
+                    console.error(err);
+                    return ws.send(JSON.stringify({eventId: "error", message: "Internal Server Error", code: 500}));
+                }
             } else {
                 return ws.send(JSON.stringify({eventId: "error", message: "Not implemented", code: 501}));
             }

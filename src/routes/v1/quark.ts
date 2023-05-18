@@ -16,6 +16,11 @@ import {getNick} from "../../util/getNickname.js";
 
 const router = express.Router();
 
+
+router.all("*", Auth, (req, res) => {
+    res.redirect(req.originalUrl.replace("/v1", "/v2"));
+})
+
 /**
  * Get servers that the user is a member of.
  * Servers are called Quarks.
