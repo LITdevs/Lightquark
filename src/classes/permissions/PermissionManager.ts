@@ -1,4 +1,6 @@
 import Permission from "./Permission.js";
+import db from "../../db.js";
+import {Types} from "mongoose";
 
 export default class PermissionManager {
     private static _instance: PermissionManager;
@@ -55,5 +57,76 @@ export default class PermissionManager {
         });
         console.debug(`Registering ${permissionName} with scopes ${scopes} and children ${childrenNames.join(", ")}`);
         PermissionManager.permissions[permissionName] = {permission: new Permission(permissionName, scopes, children), description: description};
+    }
+
+    /**
+     *
+     * @param permission
+     * @param userId
+     * @param scope
+     */
+    public static async isPermitted(permission: PermissionType, userId, scope: {scopeType: ("quark"|"channel"), scopeId, quarkId?}) : Promise<boolean> {
+        if (!PermissionManager.permissions[permission]) throw new Error(`Permission ${permission} is not registered.`);
+        let permissionAssignments = await this.getAssignments(userId, scope);
+        return permissionAssignments.some(perm => this.permissions[perm.permission].permission.grants(permission));
+
+    }
+
+    static async getAssignments(userId, scope: {scopeType: ("quark"|"channel"), scopeId, quarkId?}) {
+        let assignments : any[] = [];
+        // If scope is a channel, and no quark id was provided, get the quark id from the channel
+        let Quarks = db.getQuarks();
+        let scopeId = scope.scopeId;
+        let quarkId = scope.scopeId;
+        let quark
+        if (scope.scopeType === "channel" && !scope.quarkId) {
+            quark = await Quarks.findOne({channels: new Types.ObjectId(scope.scopeId)});
+            if (!quark) throw new Error(`Channel ${scope.scopeId} does not exist.`);
+            quarkId = quark._id;
+        } else if (scope.scopeType === "channel") {
+            quarkId = scope.quarkId;
+        }
+        if (!quark) {
+            quark = await Quarks.findOne({_id: scope.quarkId});
+        }
+        if (!quark) throw new Error(`Quark ${scope.quarkId} does not exist.`);
+        if (quark.owners.includes(String(userId))) {
+            assignments.push({
+                _id: new Types.ObjectId("6468bf123d2862c91e9aa25a"), // Randomly generated
+                role: {
+                    _id: new Types.ObjectId("6468c10b39a150bb80c13bd8"), // Randomly generated
+                    name: "Owner",
+                    quark: new Types.ObjectId(quarkId),
+                    description: "This is a fake owner role",
+                    createdBy: new Types.ObjectId("6468c158f31b7a04727771b3"), // Randomly generated
+                    priority: Infinity
+                },
+                scopeType: "quark",
+                scopeId: new Types.ObjectId(quarkId),
+                permission: "OWNER",
+                type: "allow"
+            })
+        }
+
+        // Find all permission assignments that affect the user in this scope, both channel and quark level
+        let PermissionAssignments = db.getPermissionAssignments();
+        let RoleAssignments = db.getRoleAssignments();
+        const permissionAssignments = await PermissionAssignments.find({
+            $or: [
+                {
+                    "role": { $in: await RoleAssignments.find({ user: userId, quark: quarkId }).distinct("role") },
+                    "scopeType": "quark",
+                    "scopeId": quarkId
+                },
+                {
+                    "role": { $in: await RoleAssignments.find({ user: userId, quark: quarkId }).distinct("role") },
+                    "scopeType": "channel",
+                    "scopeId": scopeId
+                }
+            ]
+        }).populate('role');
+
+        assignments = [...assignments, ...permissionAssignments];
+        return assignments
     }
 }

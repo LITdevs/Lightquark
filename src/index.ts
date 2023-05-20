@@ -74,7 +74,7 @@ app.get("/roleGetTest", async (req, res) => {
     let Role = db.getRoles();
     console.time("roleGetTest")
     // Find role 646894100df66a3fc81e0919 and populate permissionAssignments
-    let role = await Role.findById("646897a40644cbd91f00d400").populate("permissionAssignments");
+    let role = await Role.findById("646897a40644cbd91f00d400").populate("permissionAssignments").populate("roleAssignments");
     console.timeEnd("roleGetTest")
     res.json(role);
 })
@@ -84,8 +84,12 @@ app.get("/paGetTest", async (req, res) => {
     console.time("paGetTest")
     // Find role 646894100df66a3fc81e0919 and populate permissionAssignments
     let pa = await PA.findById("646898dbefcff8c704e31f19").populate("role");
-    console.timeEnd("paGetTest")
+    console.timeEnd("paGetTest");
     res.json(pa);
+})
+
+app.get("/pmTest", async (req, res) => {
+    res.json({message: await PermissionManager.isPermitted("ADMIN", "62b3515989cdb45c9e06e010", {scopeType: "channel", scopeId: "643aa2e550c913775aec2057"})});
 })
 
 app.post("/permissionCreateTest", async (req, res) => {
@@ -100,6 +104,15 @@ app.post("/permissionCreateTest", async (req, res) => {
     await pa.save();
     res.json(pa);
 })
+app.post("/raCreateTest", async (req, res) => {
+    let RoleAssignment = db.getRoleAssignments();
+    let ra = new RoleAssignment({
+        role: "646897a40644cbd91f00d400",
+        user: "646893a40ca841fd8e8f953e"
+    })
+    await ra.save();
+    res.json(ra);
+})
 
 app.all("*", (req, res) => {
     res.reply(new NotFoundReply("Endpoint not found"));
@@ -109,6 +122,7 @@ import gateway from './routes/v1/gateway.js';
 import PermissionManager from "./classes/permissions/PermissionManager.js";
 import NotFoundReply from "./classes/reply/NotFoundReply.js";
 import {Mongoose} from "mongoose";
+import Auth from "./routes/v2/auth.js";
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
     const server = app.listen(port, () => {

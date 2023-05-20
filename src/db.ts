@@ -12,6 +12,7 @@ import nicknameSchema from "./schemas/nicknameSchema.js";
 import emoteSchema from "./schemas/emoteSchema.js";
 import roleSchema from "./schemas/roleSchema.js";
 import permissionAssignmentSchema from "./schemas/permissionAssignmentSchema.js";
+import roleAssignmentSchema from "./schemas/roleAssignmentSchema.js";
 
 const LOGINDB_URI : string | undefined = process.env.LOGINDB_URI
 if (typeof LOGINDB_URI === "undefined") {
@@ -25,7 +26,7 @@ if (typeof LQDB_URI === "undefined") {
 }
 
 const dbEvents = new EventEmitter();
-export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments };
+export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments, getRoleAssignments };
 
 const logindb = mongoose.createConnection(LOGINDB_URI)
 
@@ -46,6 +47,7 @@ let Nicks
 let Emotes
 let Roles
 let PermissionAssignments
+let RoleAssignments
 lqdb.once("open", () => {
     Avatars = lqdb.model('avatar', userAvatarSchema);
     Quarks = lqdb.model('quark', quarkSchema);
@@ -56,6 +58,7 @@ lqdb.once("open", () => {
     Emotes = lqdb.model('emote', emoteSchema);
     Roles = lqdb.model('roles', roleSchema, 'roles');
     PermissionAssignments = lqdb.model('permissionAssignments', permissionAssignmentSchema, 'permissionAssignments');
+    RoleAssignments = lqdb.model('roleAssignments', roleAssignmentSchema, 'roleAssignments');
     dbEvents.emit("lq_ready");
 })
 
@@ -97,4 +100,8 @@ function getRoles() {
 
 function getPermissionAssignments() {
     return PermissionAssignments;
+}
+
+function getRoleAssignments() {
+    return RoleAssignments;
 }

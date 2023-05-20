@@ -18,4 +18,10 @@ RoleSchema.virtual("permissionAssignments", {
     foreignField: "role"
 })
 
+RoleSchema.virtual("roleAssignments", {
+    ref: "roleAssignments",
+    localField: "_id",
+    foreignField: "role"
+})
+
 export default RoleSchema;
