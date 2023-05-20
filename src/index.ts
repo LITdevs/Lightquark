@@ -55,7 +55,7 @@ app.get("/v*/network", (req, res) => {
     networkInformation.version = pjson.version;
     res.json(networkInformation);
 })
-
+/*
 app.post("/roleCreateTest", async (req, res) => {
     let Role = db.getRoles();
     let role = new Role({
@@ -113,6 +113,7 @@ app.post("/raCreateTest", async (req, res) => {
     await ra.save();
     res.json(ra);
 })
+*/
 
 app.all("*", (req, res) => {
     res.reply(new NotFoundReply("Endpoint not found"));
