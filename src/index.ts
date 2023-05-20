@@ -6,6 +6,8 @@ import fs from "fs";
 const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
 const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const app = express();
+const permissionManager = new PermissionManager();
+export { permissionManager };
 
 // Parse JSON bodies
 app.use(express.json({ limit: '250mb' }));
@@ -68,10 +70,12 @@ app.patch("*", (req, res) => {
 })
 
 import gateway from './routes/v1/gateway.js';
+import PermissionManager from "./classes/permissions/PermissionManager.js";
 let port = process.env.LQ_PORT || 10000;
 db.dbEvents.on("login_ready", () => {
     const server = app.listen(port, () => {
         console.info(`App listening on ${port}`);
     })
     gateway(server);
+    console.log(`Owner grants WRITE_MESSAGE? ${PermissionManager.permissions.OWNER.permission.grants("WRITE_MESSAGE")}`);
 })
