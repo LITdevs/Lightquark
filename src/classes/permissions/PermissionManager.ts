@@ -16,6 +16,7 @@ export default class PermissionManager {
     }
 
     private registerPermissions() {
+        console.time("PermissionManager.registerPermissions");
         // Register all permissions
         const r = this.registerPermission.bind(this);
         r("READ_CHANNEL", "Read channel information, receive new messages.");
@@ -43,6 +44,7 @@ export default class PermissionManager {
         r("MANAGE_QUARK", "Manage quark. Grants all quark management permissions.", ["EDIT_QUARK_ICON", "EDIT_QUARK_NAME", "EDIT_QUARK_DESCRIPTION", "EDIT_QUARK_INVITE", "EDIT_QUARK_ROLES"], ["quark"]);
         r("ADMIN", "General admin. Grants all admin permissions.", ["MANAGE_QUARK", "CHANNEL_ADMIN", "ASSIGN_ROLE", "NICKNAME_OTHER"], ["quark"]);
         r("OWNER", "Owner of the quark. Grants all permissions.", ["ADMIN"], ["quark"]);
+        console.timeEnd("PermissionManager.registerPermissions");
     }
 
     private registerPermission(permissionName: PermissionType, description: string, childrenNames: PermissionType[] = [], scopes: ("quark" | "channel")[] = ["quark", "channel"]) {
