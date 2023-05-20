@@ -89,7 +89,7 @@ app.get("/paGetTest", async (req, res) => {
 })
 
 app.get("/pmTest", async (req, res) => {
-    res.json({message: await PermissionManager.isPermitted("ADMIN", "62b3515989cdb45c9e06e010", {scopeType: "channel", scopeId: "643aa2e550c913775aec2057"})});
+    res.json({message: await PermissionManager.isPermitted("ASSIGN_ROLE", "62b3515989cdb45c9e06e010", {scopeType: "channel", scopeId: "643aa2e550c913775aec2057"})});
 })
 
 app.post("/permissionCreateTest", async (req, res) => {

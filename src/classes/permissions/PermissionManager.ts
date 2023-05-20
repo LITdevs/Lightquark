@@ -5,7 +5,7 @@ import {Types} from "mongoose";
 export default class PermissionManager {
     private static _instance: PermissionManager;
 
-    public static permissions: { [key: string]: { permission: Permission, description: string } } = {};
+    public static permissions: { [key: string]: { permission: Permission, description: string, default: ("allow"|"deny") } } = {};
 
     constructor() {
         // Only allow one instance of this class to exist
@@ -21,42 +21,42 @@ export default class PermissionManager {
         console.time("PermissionManager.registerPermissions");
         // Register all permissions
         const r = this.registerPermission.bind(this);
-        r("READ_CHANNEL", "Read channel information, receive new messages.");
-        r("WRITE_MESSAGE", "Send, delete and edit own message in a channel.", ["READ_CHANNEL"]);
-        r("READ_CHANNEL_HISTORY", "Read message history", ["READ_CHANNEL"]);
-        r("WRITE_ATTACHMENT", "Send attachments", ["WRITE_MESSAGE"]);
-        r("DELETE_OTHER_MESSAGE", "Delete other user's messages", ["READ_CHANNEL"]);
-        r("MESSAGE_ADMIN", "Manage messages. Grants all message permissions.", ["WRITE_MESSAGE", "WRITE_ATTACHMENT", "DELETE_OTHER_MESSAGE"]);
+        r("READ_CHANNEL", "allow", "Read channel information, receive new messages.");
+        r("WRITE_MESSAGE", "allow", "Send, delete and edit own message in a channel.", ["READ_CHANNEL"]);
+        r("READ_CHANNEL_HISTORY", "allow", "Read message history", ["READ_CHANNEL"]);
+        r("WRITE_ATTACHMENT", "allow", "Send attachments", ["WRITE_MESSAGE"]);
+        r("DELETE_OTHER_MESSAGE", "deny", "Delete other user's messages", ["READ_CHANNEL"]);
+        r("MESSAGE_ADMIN", "deny", "Manage messages. Grants all message permissions.", ["WRITE_MESSAGE", "WRITE_ATTACHMENT", "DELETE_OTHER_MESSAGE"]);
 
-        r("EDIT_CHANNEL_DESCRIPTION", "Edit channel description", ["READ_CHANNEL"]);
-        r("EDIT_CHANNEL_NAME", "Edit channel name", ["READ_CHANNEL"]);
-        r("EDIT_CHANNEL", "Edit channel information", ["EDIT_CHANNEL_DESCRIPTION", "EDIT_CHANNEL_NAME"]);
-        r("DELETE_CHANNEL", "Delete a channel", ["EDIT_CHANNEL"]);
-        r("CREATE_CHANNEL", "Create channels", [], ["quark"]);
-        r("CHANNEL_MANAGER", "Manage channels. Grants all channel management permissions.", ["EDIT_CHANNEL", "DELETE_CHANNEL", "CREATE_CHANNEL"]);
-        r("CHANNEL_ADMIN", "Manage channels and messages. Grants Channel Manager and Message Admin permissions.", ["CHANNEL_MANAGER", "MESSAGE_ADMIN"]);
+        r("EDIT_CHANNEL_DESCRIPTION", "deny", "Edit channel description", ["READ_CHANNEL"]);
+        r("EDIT_CHANNEL_NAME", "deny", "Edit channel name", ["READ_CHANNEL"]);
+        r("EDIT_CHANNEL", "deny", "Edit channel information", ["EDIT_CHANNEL_DESCRIPTION", "EDIT_CHANNEL_NAME"]);
+        r("DELETE_CHANNEL", "deny", "Delete a channel", ["EDIT_CHANNEL"]);
+        r("CREATE_CHANNEL", "deny", "Create channels", [], ["quark"]);
+        r("CHANNEL_MANAGER", "deny", "Manage channels. Grants all channel management permissions.", ["EDIT_CHANNEL", "DELETE_CHANNEL", "CREATE_CHANNEL"]);
+        r("CHANNEL_ADMIN", "deny", "Manage channels and messages. Grants Channel Manager and Message Admin permissions.", ["CHANNEL_MANAGER", "MESSAGE_ADMIN"]);
 
-        r("EDIT_QUARK_ICON", "Change quark icon", [], ["quark"]);
-        r("EDIT_QUARK_NAME", "Change quark name", [], ["quark"]);
-        r("EDIT_QUARK_DESCRIPTION", "Change quark description", [], ["quark"]);
-        r("EDIT_QUARK_INVITE", "Change quark invite", [], ["quark"]);
-        r("EDIT_QUARK_ROLES", "Change quark roles", [], ["quark"]);
-        r("ASSIGN_ROLE", "Assign roles to users", [], ["quark"]);
-        r("NICKNAME_OTHER", "Change other people's nicknames", [], ["quark"]);
-        r("MANAGE_QUARK", "Manage quark. Grants all quark management permissions.", ["EDIT_QUARK_ICON", "EDIT_QUARK_NAME", "EDIT_QUARK_DESCRIPTION", "EDIT_QUARK_INVITE", "EDIT_QUARK_ROLES"], ["quark"]);
-        r("ADMIN", "General admin. Grants all admin permissions.", ["MANAGE_QUARK", "CHANNEL_ADMIN", "ASSIGN_ROLE", "NICKNAME_OTHER"], ["quark"]);
-        r("OWNER", "Owner of the quark. Grants all permissions.", ["ADMIN"], ["quark"]);
+        r("EDIT_QUARK_ICON", "deny", "Change quark icon", [], ["quark"]);
+        r("EDIT_QUARK_NAME", "deny", "Change quark name", [], ["quark"]);
+        r("EDIT_QUARK_DESCRIPTION", "deny", "Change quark description", [], ["quark"]);
+        r("EDIT_QUARK_INVITE", "deny", "Change quark invite", [], ["quark"]);
+        r("EDIT_QUARK_ROLES", "deny", "Change quark roles", [], ["quark"]);
+        r("ASSIGN_ROLE", "deny", "Assign roles to users", [], ["quark"]);
+        r("NICKNAME_OTHER", "deny", "Change other people's nicknames", [], ["quark"]);
+        r("MANAGE_QUARK", "deny", "Manage quark. Grants all quark management permissions.", ["EDIT_QUARK_ICON", "EDIT_QUARK_NAME", "EDIT_QUARK_DESCRIPTION", "EDIT_QUARK_INVITE", "EDIT_QUARK_ROLES"], ["quark"]);
+        r("ADMIN", "deny", "General admin. Grants all admin permissions.", ["MANAGE_QUARK", "CHANNEL_ADMIN", "ASSIGN_ROLE", "NICKNAME_OTHER"], ["quark"]);
+        r("OWNER", "deny", "Owner of the quark. Grants all permissions.", ["ADMIN"], ["quark"]);
         console.timeEnd("PermissionManager.registerPermissions");
     }
 
-    private registerPermission(permissionName: PermissionType, description: string, childrenNames: PermissionType[] = [], scopes: ("quark" | "channel")[] = ["quark", "channel"]) {
+    private registerPermission(permissionName: PermissionType, defaultPermission: "allow"|"deny", description: string, childrenNames: PermissionType[] = [], scopes: ("quark" | "channel")[] = ["quark", "channel"]) {
         let children = childrenNames.map(child => {
             let permission = PermissionManager.permissions[child].permission;
             if (!permission) throw new Error(`Child permission ${child} for parent ${permissionName} does not exist. Double check registration order.`);
             return permission;
         });
         console.debug(`Registering ${permissionName} with scopes ${scopes} and children ${childrenNames.join(", ")}`);
-        PermissionManager.permissions[permissionName] = {permission: new Permission(permissionName, scopes, children), description: description};
+        PermissionManager.permissions[permissionName] = {permission: new Permission(permissionName, scopes, children), description: description, default: defaultPermission};
     }
 
     /**
@@ -68,8 +68,63 @@ export default class PermissionManager {
     public static async isPermitted(permission: PermissionType, userId, scope: {scopeType: ("quark"|"channel"), scopeId, quarkId?}) : Promise<boolean> {
         if (!PermissionManager.permissions[permission]) throw new Error(`Permission ${permission} is not registered.`);
         let permissionAssignments = await this.getAssignments(userId, scope);
-        return permissionAssignments.some(perm => this.permissions[perm.permission].permission.grants(permission));
+        /*
+        Determine if the user has the permission based on the following factors:
+        - Channel permissions rule!! They override quark permissions even with higher priority.
+        - Deny assignments deny! If a deny assignment has higher priority than an allow assignment, the permission is denied.
+        - Allow assignments allow! If an allow assignment has higher priority than a deny assignment, the permission is allowed.
+        - If no assignments are found, fallback to the default permission of the permission. this.permissions[permission].default
+        - Roles linked to assignments have priorities, and the highest priority role is used, unless an assignment is found at channel scope.
+        - Deny assignment takes priority if the priority and scope are the same.
+         */
 
+        // Determine which assignments are relevant
+        let relevantAssignments = permissionAssignments.filter(assignment => {
+            if (assignment.type === "ignore") return false;
+            return this.permissions[assignment.permission].permission.grants(permission);
+        })
+
+        if (relevantAssignments.length === 0) {
+            // No relevant assignments, fallback to default permission
+            return this.permissions[permission].default === "allow";
+        }
+
+        // Great, narrowed down irrelevant assignments. Now, determine if the permission is granted or denied.
+
+        // First, assign priorities to the assignments
+        relevantAssignments = relevantAssignments.map(assignment => {
+            assignment.priority = assignment.role.priority;
+            return assignment;
+        })
+
+        if (!this.permissions[permission].permission.scopes.includes("channel")) {
+            // For quark level actions, OWNER is always allowed
+            let ownerAssignment = relevantAssignments.some(assignment => assignment.permission === "OWNER" && assignment.type === "allow");
+            if (ownerAssignment) return true;
+        }
+
+        // Sort assignments by priority, and scope
+        relevantAssignments.sort((a, b) => {
+            let aValue = a.priority;
+            let bValue = b.priority;
+            if (a.scopeType === "channel" && b.scopeType !== "channel") aValue = Infinity;
+            if (a.scopeType !== "channel" && b.scopeType === "channel") bValue = Infinity;
+            if (a.scopeType === b.scopeType && a.priority === b.priority) {
+                // Same priority and scope, deny takes priority
+                if (a.type === "deny") aValue += 1;
+                if (b.type === "deny") bValue += 1;
+            }
+            return bValue - aValue;
+        });
+
+        //console.log(relevantAssignments)
+        // Now, the first assignment is the one that matters.
+        let assignment = relevantAssignments[0];
+        if (assignment.type === "deny") return false;
+        if (assignment.type === "allow") return true;
+
+        // If we get here, something went wrong, so just deny the permission
+        return false
     }
 
     static async getAssignments(userId, scope: {scopeType: ("quark"|"channel"), scopeId, quarkId?}) {
