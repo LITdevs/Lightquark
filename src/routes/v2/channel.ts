@@ -14,6 +14,7 @@ import axios from "axios";
 import {subscriptionListener} from "../v1/gateway.js";
 import path from "path";
 import {getNick, getNickBulk} from "../../util/getNickname.js";
+import P from "../../util/PermissionMiddleware.js";
 
 const router = express.Router();
 
@@ -158,7 +159,7 @@ router.post("/create", Auth, async (req, res) => {
     }
 })
 
-router.get("/:id/messages", Auth, async (req, res) => {
+router.get("/:id/messages", Auth, P("READ_CHANNEL_HISTORY", "channel"), async (req, res) => {
     //console.time("getMessages")
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
