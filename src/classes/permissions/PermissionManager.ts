@@ -25,6 +25,7 @@ export default class PermissionManager {
         r("WRITE_MESSAGE", "allow", "Send, delete and edit own message in a channel.", ["READ_CHANNEL"]);
         r("READ_CHANNEL_HISTORY", "allow", "Read message history", ["READ_CHANNEL"]);
         r("WRITE_ATTACHMENT", "allow", "Send attachments", ["WRITE_MESSAGE"]);
+        r("USE_EXTERNAL_EMOJI", "allow", "Use emotes from other quarks", ["WRITE_MESSAGE"]);
         r("DELETE_OTHER_MESSAGE", "deny", "Delete other user's messages", ["READ_CHANNEL"]);
         r("MESSAGE_ADMIN", "deny", "Manage messages. Grants all message permissions.", ["WRITE_MESSAGE", "WRITE_ATTACHMENT", "DELETE_OTHER_MESSAGE"]);
 

@@ -25,6 +25,27 @@ export default function P(permissions : (PermissionType|PermissionType[]), scope
     }
 }
 
+export async function checkPermittedQuarkResponse(permissions: (PermissionType|PermissionType[]), scopeId: string, userId: string, res) {
+    let check = await checkPermittedQuark(permissions, scopeId, userId);
+    if (!check.permitted) {
+        res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+        return false;
+    } else {
+        return true;
+    }
+}
+
+
+export async function checkPermittedChannelResponse(permissions: (PermissionType|PermissionType[]), scopeId: string, userId: string, res, quarkId: undefined|string = undefined) {
+    let check = await checkPermittedChannel(permissions, scopeId, userId, quarkId);
+    if (!check.permitted) {
+        res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+        return false;
+    } else {
+        return true;
+    }
+}
+
 export async function checkPermittedChannel(permissions: (PermissionType|PermissionType[]), scopeId: string, userId: string, quarkId: undefined|string = undefined) {
     return await checkPermitted(permissions, { scopeType: "channel", scopeId, quarkId }, userId);
 }

@@ -8,7 +8,8 @@ console.log(`Token: ${token}`);
 
 axios.post("https://ems-api.litdevs.org/v1/pm2/spacespull", {
 	token: token,
-	appName: environment
+	appName: environment,
+	updateDependencies: true
 }).then((res) => {
 	console.log(res.data);
 	axios.post(`https://api.github.com/repos/LITdevs/Lightquark/commits/${process.env.JB_SPACE_GIT_REVISION}/comments`, {

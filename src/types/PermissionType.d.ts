@@ -3,6 +3,7 @@
     "WRITE_MESSAGE" | // Send, delete and edit own messages in a channel. Requires READ_CHANNEL
     "READ_CHANNEL_HISTORY" | // Read channel history. Requires READ_CHANNEL
     "WRITE_ATTACHMENT" | // Send attachments in a channel. Requires WRITE_MESSAGE
+    "USE_EXTERNAL_EMOJI" | // Use emotes from other quarks. Requires READ_CHANNEL
     "DELETE_OTHER_MESSAGE" | // Delete other people's messages. Requires READ_CHANNEL
     "MESSAGE_ADMIN" | // Requires MESSAGE_NORMAL, WRITE_ATTACHMENT, DELETE_OTHER_MESSAGE
 

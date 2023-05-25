@@ -14,7 +14,11 @@ import axios from "axios";
 import {subscriptionListener} from "../v1/gateway.js";
 import path from "path";
 import {getNick, getNickBulk} from "../../util/getNickname.js";
-import P from "../../util/PermissionMiddleware.js";
+import P, {
+    checkPermittedChannelResponse,
+    checkPermittedQuark,
+    checkPermittedQuarkResponse
+} from "../../util/PermissionMiddleware.js";
 
 const router = express.Router();
 
@@ -88,23 +92,21 @@ router.delete("/:id", Auth, async (req, res) => {
 router.patch("/:id", Auth, async (req, res) => {
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
+    if (!req.body.name && !req.body.description) return res.reply(new Reply(200, true, {message: "Nothing to update"}));
     let Channels = db.getChannels();
     try {
         let channel = await Channels.findOne({ _id: req.params.id });
         if (!channel) return res.status(404).json(new NotFoundReply("Channel not found"));
         let Quarks = db.getQuarks();
-        let quark = await Quarks.findOne({ _id: channel.quark, channels: channel._id, owners: res.locals.user._id});
-
-        const canEdit = await writePermissionCheck(channel._id, res.locals.user._id, "channelEdit", channel);
-        if (!canEdit.permitted) return res.status(403).json(new ForbiddenReply(canEdit.reason));
+        let quark = await Quarks.findOne({ _id: channel.quark, channels: channel._id });
 
         // Update name
-        if (req.body.name) {
+        if (req.body.name && await checkPermittedChannelResponse("EDIT_CHANNEL_NAME", channel._id, res.locals.user._id, res, quark._id)) {
             if (req.body.name.length > 64) return res.status(400).json(new Reply(400, false, {message: "Name must be less than 64 characters"}));
             channel.name = req.body.name.trim();
         }
         // Update description
-        if (typeof req.body.description !== "undefined") {
+        if (typeof req.body.description !== "undefined" && await checkPermittedChannelResponse("EDIT_CHANNEL_DESCRIPTION", channel._id, res.locals.user._id, res, quark._id)) {
             channel.description = String(req.body.description).trim();
         }
         // Save the channel
@@ -133,8 +135,10 @@ router.post("/create", Auth, async (req, res) => {
     if (req.body.name.trim().length > 64) return res.status(400).json(new Reply(400, false, {message: "Name must be less than 64 characters"}));
     let Quarks = db.getQuarks();
     try {
-        let quark = await Quarks.findOne({ _id: req.body.quark, owners: res.locals.user._id });
-        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found or you are not an owner"));
+        let quark = await Quarks.findOne({ _id: req.body.quark });
+        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
+        let check = await checkPermittedQuarkResponse(["CREATE_CHANNEL"], quark._id, res.locals.user._id, res);
+        if (!check) return;
         let Channel = db.getChannels();
         let channel = new Channel({
             _id: new mongoose.Types.ObjectId(),
@@ -159,7 +163,7 @@ router.post("/create", Auth, async (req, res) => {
     }
 })
 
-router.get("/:id/messages", Auth, P("READ_CHANNEL_HISTORY", "channel"), async (req, res) => {
+router.get("/:id/messages", Auth, P(["READ_CHANNEL_HISTORY", "READ_CHANNEL"], "channel"), async (req, res) => {
     //console.time("getMessages")
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
