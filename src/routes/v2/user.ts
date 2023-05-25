@@ -15,6 +15,7 @@ import {getNick} from "../../util/getNickname.js";
 import {isValidObjectId} from "mongoose";
 import RequiredProperties from "../../util/RequiredProperties.js";
 import {getUserBulk} from "./channel.js";
+import FeatureFlag from "../../util/FeatureFlagMiddleware.js";
 
 const router = express.Router();
 
@@ -176,7 +177,7 @@ router.get("/:id", Auth, async (req, res) => {
     }
 })
 
-router.post("/bulk", Auth, RequiredProperties([
+router.post("/bulk", Auth, FeatureFlag("LQ_UserBulkEndpoint"), RequiredProperties([
     {
         property: "users",
         isArray: true

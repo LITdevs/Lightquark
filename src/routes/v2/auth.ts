@@ -94,6 +94,11 @@ async function Auth(req, res, next) {
             let avatar = await Avatars.findOne({userId: payload._id});
             let avatarUri = avatar?.avatarUri;
             if (avatarUri) res.locals.user.avatar = avatarUri;
+            res.locals.unleashContext = {
+              userId: res.locals.user._id,
+              remoteAddress: req.headers["cf-connecting-ip"],
+            }
+
             return next();
         } catch (err) {
             console.error(err);

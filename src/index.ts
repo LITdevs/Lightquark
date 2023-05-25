@@ -3,9 +3,19 @@ import dotenv from 'dotenv';
 dotenv.config();
 import db from "./db.js";
 import fs from "fs";
+import { initialize } from 'unleash-client';
 const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
 const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const app = express();
+
+export const unleash = initialize({
+    url: 'https://feature-gacha.litdevs.org/api',
+    appName: 'Lightquark',
+    environment: networkInformation.environment === "dev" ? "development" : "production",
+    // @ts-ignore
+    customHeaders: { Authorization: process.env.UNLEASH_TOKEN },
+});
+
 const permissionManager = new PermissionManager();
 export { permissionManager };
 
@@ -122,14 +132,27 @@ app.all("*", (req, res) => {
 import gateway from './routes/v1/gateway.js';
 import PermissionManager from "./classes/permissions/PermissionManager.js";
 import NotFoundReply from "./classes/reply/NotFoundReply.js";
-import {Mongoose} from "mongoose";
-import Auth from "./routes/v2/auth.js";
+
 let port = process.env.LQ_PORT || 10000;
+let dbReady = false;
+let unleashReady = false;
 db.dbEvents.on("login_ready", () => {
+    console.debug("Database ready")
+    dbReady = true;
+    if (unleashReady) startServer();
+});
+
+unleash.on('synchronized', () => {
+    console.debug("Unleash ready")
+    unleashReady = true;
+    if (dbReady) startServer();
+});
+
+function startServer() {
     const server = app.listen(port, () => {
         console.info(`App listening on ${port}`);
     })
     gateway(server);
     const grants = PermissionManager.permissions.OWNER.permission.grants("WRITE_MESSAGE");
     console.debug(`Owner grants WRITE_MESSAGE? ${grants ? "yes" : "no"}`);
-})
+}
