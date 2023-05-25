@@ -44,3 +44,20 @@ export default async function Auth(req, res, next) {
         }
     }
 }
+
+export async function WsAuth(jwt) : Promise<false | object> {
+    try {
+         const { payload } = await jose.jwtVerify(jwt, secret, {
+            issuer: 'Lightquark',
+            audience: 'Lightquark-client',
+        })
+        return payload;
+    } catch (e : any) {
+        if (["ERR_JWT_CLAIM_VALIDATION_FAILED", "ERR_JWS_INVALID", "ERR_JWS_SIGNATURE_VERIFICATION_FAILED", "ERR_JWT_EXPIRED"].includes(e.code)) {
+            return false;
+        } else {
+            console.error(e)
+            return false;
+        }
+    }
+}

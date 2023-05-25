@@ -74,22 +74,5 @@ router.get("/user", Auth, (req, res) => {
   res.send(new Reply(200, true, {message: "Here is the data from your JWT, it is valid", jwtData: res.locals.user}));
 })
 
-async function WsAuth(jwt) : Promise<false | object> {
-    try {
-         const { payload } = await jose.jwtVerify(jwt, secret, {
-            issuer: 'Lightquark',
-            audience: 'Lightquark-client',
-        })
-        return payload;
-    } catch (e : any) {
-        if (["ERR_JWT_CLAIM_VALIDATION_FAILED", "ERR_JWS_INVALID", "ERR_JWS_SIGNATURE_VERIFICATION_FAILED", "ERR_JWT_EXPIRED"].includes(e.code)) {
-            return false;
-        } else {
-            console.error(e)
-            return false;
-        }
-    }
-}
-
 export default router;
-export { Auth, WsAuth };
+export { Auth };
