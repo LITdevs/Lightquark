@@ -549,7 +549,7 @@ const getUser = async (userId, quarkId) => {
     };
 }
 
-const getUserBulk = async (userIds, quarkId) => {
+export const getUserBulk = async (userIds, quarkId) => {
     let Users = db.getLoginUsers();
     let users = await Users.find({ _id: {$in: userIds} });
     if (!users) return null;
@@ -569,7 +569,8 @@ const getUserBulk = async (userIds, quarkId) => {
             _id: user._id,
             username: nicks.find(n => String(n.userId) === String(user._id))?.nickname || user.username, // Fallback to username if nickname is not set
             avatarUri: avatarUri,
-            admin: !!user.admin
+            admin: !!user.admin,
+            isBot: !!user.isBot
         }
     })
     return users;

@@ -13,6 +13,8 @@ import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {subscriptionListener} from "../v1/gateway.js";
 import {getNick} from "../../util/getNickname.js";
 import {isValidObjectId} from "mongoose";
+import RequiredProperties from "../../util/RequiredProperties.js";
+import {getUserBulk} from "./channel.js";
 
 const router = express.Router();
 
@@ -157,10 +159,6 @@ router.get("/:id", Auth, async (req, res) => {
     try {
         let user = await Users.findOne({_id: req.params.id});
         if (!user) return res.json(new Reply(404, false, {message: "User not found"}));
-        let Quarks = db.getQuarks();
-        // Make sure the users share a quark
-        let quark = await Quarks.findOne({members: {$all: [req.params.id, res.locals.user._id]}})
-        if (!quark) return res.status(403).json(new ForbiddenReply("You are not in a quark with this user"));
         let Avatars = db.getAvatars();
         // Find the avatar of the user
         let avatar = Avatars.findOne({userId: user._id});
@@ -176,6 +174,29 @@ router.get("/:id", Auth, async (req, res) => {
         console.error(err)
         return res.status(500).json(new ServerErrorReply());
     }
+})
+
+router.post("/bulk", Auth, RequiredProperties([
+    {
+        property: "users",
+        isArray: true
+    },
+    {
+        property: "quark",
+        optional: true,
+        type: "string"
+    }
+]), async (req, res) => {
+    let invalidIds : any[] = [];
+    req.body.users.forEach((user) => {
+        if (typeof user !== "string" || !isValidObjectId(user)) invalidIds.push(user);
+    })
+    if (invalidIds.length > 0) return res.reply(new InvalidReplyMessage(`Invalid IDs: ${invalidIds.join(", ")}`))
+    if (req.body.quark && !isValidObjectId(req.body.quark)) return res.reply(new InvalidReplyMessage("Invalid quark ID"))
+
+    let bulkUsers = await getUserBulk(req.body.users, req.body.quark || undefined);
+
+    res.reply(new Reply(200, true, { message: "Users retrieved", users: bulkUsers }))
 })
 
 /**
