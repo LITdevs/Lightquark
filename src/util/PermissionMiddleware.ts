@@ -1,5 +1,9 @@
 import PermissionManager from "../classes/permissions/PermissionManager.js";
 import ForbiddenReply from "../classes/reply/ForbiddenReply.js";
+import {isValidObjectId} from "mongoose";
+import InvalidReplyMessage from "../classes/reply/InvalidReplyMessage.js";
+import NotFoundReply from "../classes/reply/NotFoundReply.js";
+import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
 
 /**
  * Permission check middleware
@@ -17,11 +21,22 @@ import ForbiddenReply from "../classes/reply/ForbiddenReply.js";
  */
 export default function P(permissions : (PermissionType|PermissionType[]), scope: ("channel"|"quark")) : Function {
     return async (req, res, next) => {
-        let check = await checkPermitted(permissions, { scopeType: scope, scopeId: req.params.id }, res.locals.user._id);
-        if (!check.permitted) {
-            return res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+        if (!isValidObjectId(req.params.id)) {
+            return res.reply(new InvalidReplyMessage(`Invalid ${scope} ID`));
         }
-        next();
+        try {
+            let check = await checkPermitted(permissions, { scopeType: scope, scopeId: req.params.id }, res.locals.user._id);
+            if (!check.permitted) {
+                return res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+            }
+            next();
+        } catch (e : any) {
+            if (e?.message?.includes("does not exist")) {
+                return res.reply(new NotFoundReply(e.message));
+            }
+            console.error(e);
+            return res.reply(new ServerErrorReply());
+        }
     }
 }
 
