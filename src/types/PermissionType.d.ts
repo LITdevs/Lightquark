@@ -22,13 +22,18 @@
     "UNBAN_USER_QUARK" | // Unban users from a quark. Requires READ_CHANNEL, UNBAN_USER_CHANNEL
     */
 
+     "CREATE_EMOTE" |
+     "EDIT_EMOTE" |
+     "DELETE_EMOTE" |
+     "MANAGE_EMOTE" |
+
     "EDIT_QUARK_ICON" | // Change quark icon
     "EDIT_QUARK_NAME" | // Change quark name
     "EDIT_QUARK_DESCRIPTION" | // Change quark description
     "EDIT_QUARK_INVITE" | // Change quark invite
     "EDIT_QUARK_ROLES" | // Change quark roles
     "ASSIGN_ROLE" | // Assign roles to users
-    "NICKNAME_OTHER" | // Change other people's nicknames
+    //"NICKNAME_OTHER" | // Change other people's nicknames
     "MANAGE_QUARK" | // Role management, etc. Requires EDIT_QUARK_BASIC, EDIT_QUARK_INVITE, EDIT_QUARK_ROLES, ASSIGN_ROLE
     "ADMIN" | // General admin. Requires MANAGE_QUARK, CHANNEL_ADMIN, MESSAGE_ADMIN, BAN_USER_QUARK, UNBAN_USER_QUARK, NICKNAME_OTHER
     "OWNER"; // Owner of the quark, all permissions including quark deletion. Requires ADMIN

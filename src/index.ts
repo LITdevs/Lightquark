@@ -51,12 +51,10 @@ import authv2 from './routes/v2/auth.js';
 import userv2 from './routes/v2/user.js';
 import quarkv2 from './routes/v2/quark.js';
 import channelv2 from './routes/v2/channel.js';
-import dmv2 from './routes/v2/dm.js';
 app.use("/v2/auth", authv2);
 app.use("/v2/user", userv2);
 app.use("/v2/quark", quarkv2);
 app.use("/v2/channel", channelv2);
-app.use("/v2/dm", dmv2);
 
 import home from './routes/home.js';
 app.use("/", home)
@@ -98,9 +96,6 @@ app.get("/paGetTest", async (req, res) => {
     res.json(pa);
 })
 
-app.get("/pmTest", async (req, res) => {
-    res.json({message: await PermissionManager.isPermitted("ASSIGN_ROLE", "62b3515989cdb45c9e06e010", {scopeType: "channel", scopeId: "643aa2e550c913775aec2057"})});
-})
 
 app.post("/permissionCreateTest", async (req, res) => {
     let PermissionAssignment = db.getPermissionAssignments();
@@ -124,6 +119,10 @@ app.post("/raCreateTest", async (req, res) => {
     res.json(ra);
 })
 */
+
+app.get("/pmTest", async (req, res) => {
+    res.json({message: await PermissionManager.isPermitted("READ_CHANNEL", "62b3515989cdb45c9e06e010", {scopeType: "channel", scopeId: "643aa2e550c913775aec2057"})});
+})
 
 app.all("*", (req, res) => {
     res.reply(new NotFoundReply("Endpoint not found"));

@@ -14,6 +14,7 @@ import axios from "axios";
 import {subscriptionListener} from "../v1/gateway.js";
 import RequiredProperties from "../../util/RequiredProperties.js";
 import sharp from "sharp";
+import {ConstantID_DMvQuark, ConstantID_SystemUser} from "../../util/ConstantID.js";
 
 const router = express.Router();
 
@@ -28,11 +29,15 @@ router.get("/me", Auth, async (req, res) => {
         let Channels = db.getChannels();
         const resolveChannels = async (quarkChannels, quarkId) => {
             let channels = await Channels.find({ quark: quarkId })
-            let newChannels = await Promise.all(quarkChannels.map((channel) => {
+            let newChannels = await Promise.all(quarkChannels.map(async (channel) => {
                 let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
                 if (foundChannel) channel = foundChannel;
-                return channel;
+                if ((await checkPermittedChannel("READ_CHANNEL", channel, res.locals.user._id, quarkId)).permitted) {
+                    return channel;
+                }
+                return undefined;
             }))
+            newChannels = newChannels.filter((c) => c !== undefined);
             return newChannels;
         }
 
@@ -41,6 +46,15 @@ router.get("/me", Auth, async (req, res) => {
             quark.channels = inflatedChannels;
             return quark;
         }))
+
+        quarks.push({
+            name: "Direct Messages",
+            _id: ConstantID_DMvQuark,
+            members: [res.locals.user._id],
+            invite: "direct messages", // Impossible invite
+            owners: [ ConstantID_SystemUser ],
+            channels: [] // TODO: #LIGHTQUARK-1
+        })
 
         res.json(new Reply(200, true, {message: "Here are the quarks you are a member of", quarks}));
     } catch (err) {
@@ -52,6 +66,7 @@ router.get("/me", Auth, async (req, res) => {
 
 /**
  * Change quark order
+ * FIXME: This hurts my brain
  * @param {string[]} order - The new order of the quarks
  */
 router.put("/order", Auth, async (req, res) => {
@@ -89,6 +104,7 @@ router.put("/order", Auth, async (req, res) => {
 
 /**
  * Get quark order
+ * FIXME: This hurts my brain
  */
 router.get("/order", Auth, async (req, res) => {
     try {
@@ -147,9 +163,6 @@ router.post("/create", Auth, async (req, res) => {
             members: [res.locals.user._id], // Add the user to the quark
             name: req.body.name.trim(), // Trim the name to remove any whitespace
             iconUri: "https://lq.litdevs.org/default.webp", // Use default icon
-            emotes: [],
-            roles: [],
-            bans: [],
             channels: [defaultChannelId], // Add the default channel
             invite: `${req.body.name.replace(/[^A-Za-z0-9-_.]/g, "-").toLowerCase()}-${Math.floor(Math.random() * 1000000)}`, // Generate random invite code
             owners: [res.locals.user._id] // Add the user to the owners
@@ -197,6 +210,11 @@ router.post("/:id/leave", Auth, async (req, res) => {
 })
 
 import roleSubAPI from "./quark/role.js";
+import P, {
+    checkPermittedChannel,
+    checkPermittedChannelResponse,
+    checkPermittedQuarkResponse
+} from "../../util/PermissionMiddleware.js";
 router.use("/:quarkId/role", roleSubAPI)
 
 /**
@@ -209,13 +227,13 @@ router.all("/", Auth, (req, res) => {
 /**
  * Delete a quark by id
  */
-router.delete("/:id", Auth, async (req, res) => {
+router.delete("/:id", Auth, P("OWNER", "quark"), async (req, res) => {
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
     let Quarks = db.getQuarks();
     try {
-        let quark = await Quarks.findOne({ _id: req.params.id, owners: res.locals.user._id });
-        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found, or you are not an owner"));
+        let quark = await Quarks.findOne({ _id: req.params.id });
+        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
         await Quarks.deleteOne({ _id: quark._id, owners: res.locals.user._id })
         res.json(new Reply(200, true, {message: "Quark deleted"}));
         // Send delete event
@@ -242,11 +260,13 @@ router.get("/:id", Auth, async (req, res) => {
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
         let Channels = db.getChannels();
         let channels = await Channels.find({ quark: quark._id });
-        quark.channels = quark.channels.map((channel) => {
+        quark.channels = await Promise.all(quark.channels.map(async (channel) => {
             let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
             if (foundChannel) channel = foundChannel;
-            return channel;
-        })
+            if ((await checkPermittedChannel("READ_CHANNEL", channel, res.locals.user._id, quark._id)).permitted) {
+                return channel;
+            }
+        }))
         res.json(new Reply(200, true, {message: "Here is the quark", quark}));
     } catch (err) {
         console.error(err);
@@ -258,7 +278,6 @@ router.get("/:id", Auth, async (req, res) => {
  * Get a quark by invite
  */
 router.get("/invite/:invite", async (req, res) => {
-    if (!req.params.invite) return res.status(400).json(new InvalidReplyMessage("Invalid invite"));
     let Quarks = db.getQuarks();
     try {
         let inviteQuark = await Quarks.findOne({ invite: req.params.invite })
@@ -274,7 +293,6 @@ router.get("/invite/:invite", async (req, res) => {
  * Join a quark by invite
  */
 router.post("/invite/:invite", Auth, async (req, res) => {
-    if (!req.params.invite) return res.status(400).json(new InvalidReplyMessage("Invalid invite"));
     let Quarks = db.getQuarks();
     try {
         let inviteQuark = await Quarks.findOne({ invite: req.params.invite })
@@ -282,6 +300,12 @@ router.post("/invite/:invite", Auth, async (req, res) => {
         if (inviteQuark.members.includes(res.locals.user._id)) return res.status(400).json(new InvalidReplyMessage("You are already a member of this quark"));
         inviteQuark.members.push(res.locals.user._id);
         await inviteQuark.save();
+        // Is this going to work? I don't know.
+        // Am I going to test it? No.
+        // Is it going to production? Yes!
+        inviteQuark.channels = await Promise.all(inviteQuark.channels.filter(async (channel) => {
+            return (await checkPermittedChannel("READ_CHANNEL", channel, res.locals.user._id, inviteQuark._id)).permitted;
+        }))
         res.json(new Reply(200, true, {message: "Joined quark", quark: inviteQuark}));
 
         // Send update event
@@ -300,9 +324,8 @@ router.post("/invite/:invite", Auth, async (req, res) => {
 /**
  * Upload a quark icon
  */
-router.put("/:id/icon", Auth, async (req, res) => {
+router.put("/:id/icon", Auth, P("EDIT_QUARK_ICON", "quark"), async (req, res) => {
     // Validate the quark id
-    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
     // Validate the request body
     if (!req.body || !isUint8Array(req.body)) return res.json(new Reply(400, false, {message: "Request body must be an image file in binary form"}));
@@ -313,8 +336,8 @@ router.put("/:id/icon", Auth, async (req, res) => {
     let Quarks = db.getQuarks();
 
     try {
-        let quark = await Quarks.findOne({ _id: req.params.id, owners: res.locals.user._id });
-        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found, or you are not an owner"));
+        let quark = await Quarks.findOne({ _id: req.params.id });
+        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
         let formData = new FormData();
         // Write temp file
         fs.writeFileSync(`/share/wcloud/${randomName}`, req.body);
@@ -352,16 +375,15 @@ router.put("/:id/icon", Auth, async (req, res) => {
 /**
  * Reset the quark icon to the default icon.
  */
-router.delete("/:id/icon", Auth, async (req, res) => {
+router.delete("/:id/icon", Auth, P("EDIT_QUARK_ICON", "quark"), async (req, res) => {
     // Validate the quark id
-    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
 
     // Find the quark and reset the icon
     let Quarks = db.getQuarks();
     try {
         let quark = await Quarks.findOne({_id: req.params.id, owners: res.locals.user._id});
-        if (!quark) return res.status(404).json(new InvalidReplyMessage("Quark not found or you are not an owner"));
+        if (!quark) return res.status(404).json(new InvalidReplyMessage("Quark not found"));
         let oldIcon = quark.iconUri;
         if (quark.iconUri === "https://lq.litdevs.org/default.webp") return res.status(400).json(new InvalidReplyMessage("Quark already has the default icon"));
         quark.iconUri = "https://lq.litdevs.org/default.webp"; // Default icon
@@ -384,22 +406,26 @@ router.delete("/:id/icon", Auth, async (req, res) => {
 
 /**
  * Edit a quark by id
+ * FIXME: my brain hurts
  */
-// TODO: Allow roles to edit quarks
 router.patch("/:id", Auth, async (req, res) => {
-    if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
     let Quarks = db.getQuarks();
     try {
         let quark = await Quarks.findOne({ _id: req.params.id });
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
-        if (!quark.owners.includes(res.locals.user._id)) return res.status(403).json(new Reply(403, false, {message: "You are not an owner of this quark"}));
         // Update name
+        if (req.body.name && !(await checkPermittedQuarkResponse("EDIT_QUARK_NAME", quark._id, res.locals.user._id, res))) {
+            return;
+        }
         if (req.body.name) {
             if (req.body.name.length > 64) return res.status(400).json(new Reply(400, false, {message: "Name must be less than 64 characters"}));
             quark.name = req.body.name.trim();
         }
         // Update owner list
+        if (req.body.owners && !(await checkPermittedQuarkResponse("OWNER", quark._id, res.locals.user._id, res))) {
+            return;
+        }
         if (req.body.owners) {
             if (!Array.isArray(req.body.owners)) return res.status(400).json(new Reply(400, false, {message: "Owners must be an array"}));
             if (req.body.owners.length < 1) return res.status(400).json(new Reply(400, false, {message: "Quark must have at least one owner"}));
@@ -433,6 +459,10 @@ router.patch("/:id", Auth, async (req, res) => {
             subscriptionListener.emit("event", `quark_${quark._id}` , data);
         }
         // Update invite
+        // Update owner list
+        if (req.body.invite && !(await checkPermittedQuarkResponse("EDIT_QUARK_INVITE", quark._id, res.locals.user._id, res))) {
+            return;
+        }
         if (req.body.invite && typeof req.body.invite === "string") {
             req.body.invite = req.body.invite.replace(/[^A-Za-z0-9-_.]/g, "-").toLowerCase();
             if (req.body.invite.trim().length > 16) return res.status(400).json(new Reply(400, false, {message: "Invite must be less than 16 characters"}));
@@ -465,7 +495,7 @@ router.get("/:id/emotes", Auth, async (req, res) => {
 // Create emote endpoint POST
 // Expected fields: name, image in base64
 // Optional fields: description, alt text
-router.post("/:id/emotes", Auth, RequiredProperties([
+router.post("/:id/emotes", Auth, P("CREATE_EMOTE", "quark"), RequiredProperties([
     {property: "name", type: "string", minLength: 1, maxLength: 64, regex: /^[^:\s]+$/},
     {property: "image", type: "string"},
     {property: "description", type: "string", maxLength: 128, trim: true, optional: true},
@@ -473,12 +503,10 @@ router.post("/:id/emotes", Auth, RequiredProperties([
 ]), async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
     // Check if user is an owner of the quark
-    // TODO: role system
     let Quarks = db.getQuarks();
     try {
         let quark = await Quarks.findOne({_id: req.params.id});
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
-        if (!quark.owners.includes(res.locals.user._id)) return res.status(403).json(new Reply(403, false, {message: "You are not an owner of this quark"}));
         let Emote = db.getEmotes();
         let emote = new Emote({
             name: req.body.name.trim(),
@@ -550,22 +578,17 @@ router.post("/:id/emotes", Auth, RequiredProperties([
 
 // Modify emote endpoint PATCH
 // Modifiable fields: name, description, alt text
-router.patch("/:id/emotes/:emoteId", Auth, RequiredProperties([
+router.patch("/:id/emotes/:emoteId", Auth, P("EDIT_EMOTE", "quark"), RequiredProperties([
     {property: "name", type: "string", minLength: 1, maxLength: 64, regex: /^[^:\s]+$/, optional: true},
     {property: "description", type: "string", maxLength: 128, trim: true, optional: true},
     {property: "altText", type: "string", maxLength: 128, trim:true, optional: true}
 ]), async (req, res) => {
-    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
+
     if (!mongoose.isValidObjectId(req.params.emoteId)) return res.status(400).json(new InvalidReplyMessage("Invalid emote id"));
     // Check if user is an owner of the quark
     try {
-        let Quarks = db.getQuarks();
-        let quark = await Quarks.findOne({_id: req.params.id});
-        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
-        // TODO: role system
-        if (!quark.owners.includes(res.locals.user._id)) return res.status(403).json(new Reply(403, false, {message: "You are not an owner of this quark"}));
         let Emotes = db.getEmotes();
-        let emote = await Emotes.findOne({_id: req.params.emoteId});
+        let emote = await Emotes.findOne({_id: req.params.emoteId, quark: req.params.id});
         if (!emote) return res.status(404).json(new NotFoundReply("Emote not found"));
         if (req.body.name) emote.name = req.body.name.trim();
         if (req.body.description) emote.description = req.body.description.trim();
@@ -580,15 +603,11 @@ router.patch("/:id/emotes/:emoteId", Auth, RequiredProperties([
 
 // Delete emote endpoint DELETE
 // Expected fields: _id
-router.delete("/:id/emotes/:emoteId", Auth, async (req, res) => {
+router.delete("/:id/emotes/:emoteId", Auth, P("DELETE_EMOTE", "quark"), async (req, res) => {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
     if (!mongoose.isValidObjectId(req.params.emoteId)) return res.status(400).json(new InvalidReplyMessage("Invalid emote id"));
     // Check if user is an owner of the quark
     try {
-        let Quarks = db.getQuarks();
-        let quark = await Quarks.findOne({_id: req.params.id});
-        if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
-        if (!quark.owners.includes(res.locals.user._id)) return res.status(403).json(new Reply(403, false, {message: "You are not an owner of this quark"}));
         let Emotes = db.getEmotes();
         let emote = await Emotes.findOne({_id: req.params.emoteId, quark: req.params.id});
         if (!emote) return res.status(404).json(new NotFoundReply("Emote not found"));

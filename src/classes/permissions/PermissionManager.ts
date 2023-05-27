@@ -1,6 +1,7 @@
 import Permission from "./Permission.js";
 import db from "../../db.js";
 import {Types} from "mongoose";
+import {ConstantID_OwnerAssignment, ConstantID_OwnerRole, ConstantID_SystemUser} from "../../util/ConstantID.js";
 
 export default class PermissionManager {
     private static _instance: PermissionManager;
@@ -37,15 +38,21 @@ export default class PermissionManager {
         r("CHANNEL_MANAGER", "deny", "Manage channels. Grants all channel management permissions.", ["EDIT_CHANNEL", "DELETE_CHANNEL", "CREATE_CHANNEL"]);
         r("CHANNEL_ADMIN", "deny", "Manage channels and messages. Grants Channel Manager and Message Admin permissions.", ["CHANNEL_MANAGER", "MESSAGE_ADMIN"]);
 
+        r("CREATE_EMOTE", "deny", "Add new emotes", [], ["quark"]);
+        r("EDIT_EMOTE", "deny", "Edit emotes", [], ["quark"]);
+        r("DELETE_EMOTE", "deny", "Remove emotes", [], ["quark"]);
+        r("MANAGE_EMOTE", "deny", "All emote permissions", ["CREATE_EMOTE", "EDIT_EMOTE", "DELETE_EMOTE"], ["quark"]);
+
+
         r("EDIT_QUARK_ICON", "deny", "Change quark icon", [], ["quark"]);
         r("EDIT_QUARK_NAME", "deny", "Change quark name", [], ["quark"]);
         r("EDIT_QUARK_DESCRIPTION", "deny", "Change quark description", [], ["quark"]);
         r("EDIT_QUARK_INVITE", "deny", "Change quark invite", [], ["quark"]);
         r("EDIT_QUARK_ROLES", "deny", "Change quark roles", [], ["quark"]);
         r("ASSIGN_ROLE", "deny", "Assign roles to users", [], ["quark"]);
-        r("NICKNAME_OTHER", "deny", "Change other people's nicknames", [], ["quark"]);
+        //r("NICKNAME_OTHER", "deny", "Change other people's nicknames", [], ["quark"]);
         r("MANAGE_QUARK", "deny", "Manage quark. Grants all quark management permissions.", ["EDIT_QUARK_ICON", "EDIT_QUARK_NAME", "EDIT_QUARK_DESCRIPTION", "EDIT_QUARK_INVITE", "EDIT_QUARK_ROLES"], ["quark"]);
-        r("ADMIN", "deny", "General admin. Grants all admin permissions.", ["MANAGE_QUARK", "CHANNEL_ADMIN", "ASSIGN_ROLE", "NICKNAME_OTHER"], ["quark"]);
+        r("ADMIN", "deny", "General admin. Grants all admin permissions.", ["MANAGE_QUARK", "CHANNEL_ADMIN", "ASSIGN_ROLE"/*, "NICKNAME_OTHER"*/], ["quark"]);
         r("OWNER", "deny", "Owner of the quark. Grants all permissions.", ["ADMIN"], ["quark"]);
         console.timeEnd("PermissionManager.registerPermissions");
     }
@@ -143,18 +150,18 @@ export default class PermissionManager {
             quarkId = scope.quarkId;
         }
         if (!quark) {
-            quark = await Quarks.findOne({_id: scope.quarkId});
+            quark = await Quarks.findOne({_id: quarkId});
         }
         if (!quark) throw new Error(`Quark ${scope.quarkId} does not exist.`);
         if (quark.owners.includes(String(userId))) {
             assignments.push({
-                _id: new Types.ObjectId("6468bf123d2862c91e9aa25a"), // Randomly generated
+                _id: ConstantID_OwnerAssignment,
                 role: {
-                    _id: new Types.ObjectId("6468c10b39a150bb80c13bd8"), // Randomly generated
+                    _id: ConstantID_OwnerRole,
                     name: "Owner",
                     quark: new Types.ObjectId(quarkId),
-                    description: "This is a fake owner role",
-                    createdBy: new Types.ObjectId("6468c158f31b7a04727771b3"), // Randomly generated
+                    description: "Quark owner",
+                    createdBy: ConstantID_SystemUser,
                     priority: Infinity
                 },
                 scopeType: "quark",

@@ -90,12 +90,18 @@ router.patch("/:id", Auth, async (req, res) => {
         let quark = await Quarks.findOne({ _id: channel.quark, channels: channel._id });
 
         // Update name
-        if (req.body.name && await checkPermittedChannelResponse("EDIT_CHANNEL_NAME", channel._id, res.locals.user._id, res, quark._id)) {
+        if (req.body.name && !(await checkPermittedChannelResponse("EDIT_CHANNEL_NAME", channel._id, res.locals.user._id, res, quark._id))) {
+            return;
+        }
+        if (req.body.name) {
             if (req.body.name.length > 64) return res.status(400).json(new Reply(400, false, {message: "Name must be less than 64 characters"}));
             channel.name = req.body.name.trim();
         }
         // Update description
-        if (typeof req.body.description !== "undefined" && await checkPermittedChannelResponse("EDIT_CHANNEL_DESCRIPTION", channel._id, res.locals.user._id, res, quark._id)) {
+        if (req.body.description && !(await checkPermittedChannelResponse("EDIT_CHANNEL_DESCRIPTION", channel._id, res.locals.user._id, res, quark._id))) {
+            return;
+        }
+        if (typeof req.body.description !== "undefined") {
             channel.description = String(req.body.description).trim();
         }
         // Save the channel
@@ -219,7 +225,7 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
     },
     {
         property: "attachments",
-        type: "array",
+        isArray: true,
         maxLength: 10,
         optional: true
     }
@@ -234,7 +240,7 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
         let Quark = db.getQuarks();
         let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
 
-        if (req.body.attachments && !(await checkPermittedChannelResponse("WRITE_ATTACHMENT", req.params._id, res.local.user_id, res, quark?._id))) {
+        if (req.body.attachments && !(await checkPermittedChannelResponse("WRITE_ATTACHMENT", req.params._id, res.locals.user._id, res, quark?._id))) {
             return;
         }
 

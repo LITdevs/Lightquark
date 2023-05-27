@@ -6,8 +6,8 @@ export default new Mongoose.Schema({
     name: String,
     iconUri: String,
     //emotes: Array, lol no this is dumb
-    roles: Array,
-    bans: Array,
+    //roles: Array,
+    //bans: Array,
     channels: Array,
     invite: { type: String, unique: true },
     owners: Array

@@ -25,6 +25,7 @@ export default function P(permissions : (PermissionType|PermissionType[]), scope
             return res.reply(new InvalidReplyMessage(`Invalid ${scope} ID`));
         }
         try {
+            console.log(req.params)
             let check = await checkPermitted(permissions, { scopeType: scope, scopeId: req.params.id }, res.locals.user._id);
             if (!check.permitted) {
                 return res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
