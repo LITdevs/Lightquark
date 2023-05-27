@@ -196,6 +196,9 @@ router.post("/:id/leave", Auth, async (req, res) => {
     }
 })
 
+import roleSubAPI from "./quark/role.js";
+router.use("/:quarkId/role", roleSubAPI)
+
 /**
  * Respond 400 if no quark id is provided
  */
