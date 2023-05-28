@@ -1,6 +1,6 @@
 import Permission from "./Permission.js";
 import db from "../../db.js";
-import {Types} from "mongoose";
+import {isValidObjectId, Types} from "mongoose";
 import {
     ConstantID_DenyAssignment, ConstantID_DenyRole,
     ConstantID_OwnerAssignment,
@@ -142,6 +142,10 @@ export default class PermissionManager {
 
     static async getAssignments(userId, scope: {scopeType: ("quark"|"channel"), scopeId, quarkId?}) {
         let assignments : any[] = [];
+        if (!isValidObjectId(userId)) throw new Error(`Invalid user id ${userId}`);
+        if (!isValidObjectId(scope.scopeId)) throw new Error(`Invalid ${scope.scopeType} ID ${scope.scopeId}`);
+        if (scope?.quarkId && !isValidObjectId(scope.quarkId)) throw new Error(`Invalid quark ID ${scope.quarkId}`);
+
         // If scope is a channel, and no quark id was provided, get the quark id from the channel
         let Quarks = db.getQuarks();
         let scopeId = scope.scopeId;

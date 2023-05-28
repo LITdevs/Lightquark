@@ -4,7 +4,7 @@ dotenv.config();
 import db from "./db.js";
 import fs from "fs";
 import { initialize } from 'unleash-client';
-const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
+export const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
 const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const app = express();
 

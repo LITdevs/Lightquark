@@ -16,6 +16,8 @@ import {isValidObjectId} from "mongoose";
 import RequiredProperties from "../../util/RequiredProperties.js";
 import {getUserBulk} from "./channel.js";
 import FeatureFlag from "../../util/FeatureFlagMiddleware.js";
+import {ConstantID_SystemUser} from "../../util/ConstantID.js";
+import {networkInformation} from "../../index.js";
 
 const router = express.Router();
 
@@ -156,6 +158,19 @@ router.delete("/me/avatar", Auth, async (req, res) => {
  */
 router.get("/:id", Auth, async (req, res) => {
     let Users = db.getLoginUsers();
+
+    // Return system user info, since it's not in the database
+    if (req.params.id === String(ConstantID_SystemUser)) {
+        res.reply(new Reply(200, true, {message: "User found", user: {
+                _id: ConstantID_SystemUser,
+                username: "System",
+                admin: true,
+                avatarUri: `${networkInformation.baseUrl}/systemUser.webp`,
+                isBot: false
+            }}))
+        return;
+    }
+
     // Find the user by their ID
     try {
         let user = await Users.findOne({_id: req.params.id});
@@ -168,7 +183,8 @@ router.get("/:id", Auth, async (req, res) => {
             _id: user._id,
             username: await getNick(user._id),
             avatarUri: avatar.avatarUri,
-            admin: !!user.admin
+            admin: !!user.admin,
+            isBot: !!user.isBot
         }
         res.json(new Reply(200, true, {message: "User found", user: safeUser}));
     } catch (err) {

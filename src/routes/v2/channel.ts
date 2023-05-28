@@ -19,6 +19,8 @@ import P, {
     checkPermittedQuarkResponse
 } from "../../util/PermissionMiddleware.js";
 import RequiredProperties from "../../util/RequiredProperties.js";
+import {ConstantID_SystemUser} from "../../util/ConstantID.js";
+import {networkInformation} from "../../index.js";
 
 const router = express.Router();
 
@@ -377,7 +379,8 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
  */
 router.delete("/:id/messages/:messageId", Auth, async (req, res) => {
     if (!req.params.messageId) return res.status(400).json(new InvalidReplyMessage("Provide a message id"));
-    if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message id"));
+    if (!mongoose.isValidObjectId(req.params.messageId)) return res.status(400).json(new InvalidReplyMessage("Invalid message ID"));
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel ID"));
 
     // Find message
     let Messages = db.getMessages();
@@ -386,7 +389,7 @@ router.delete("/:id/messages/:messageId", Auth, async (req, res) => {
         if (!message) return res.status(404).json(new NotFoundReply("Message not found"));
 
         // Author can always delete, but others can delete if they have DELETE_OTHER_MESSAGE
-        if (res.locals.user._id !== message.authorId) {
+        if (String(res.locals.user._id) !== String(message.authorId)) {
             if (!(await checkPermittedChannelResponse("DELETE_OTHER_MESSAGE", req.params.id, res.locals.user._id, res))) return;
         }
 
@@ -502,6 +505,9 @@ export const getUserBulk = async (userIds, quarkId) => {
 
     let nicks = await getNickBulk(userIds, quarkId);
 
+
+
+
     users.forEach((user, index) => {
         let avatar = avatars.find(a => String(a.userId) === String(user._id));
         let avatarUri = avatar ? avatar.avatarUri : null;
@@ -516,6 +522,18 @@ export const getUserBulk = async (userIds, quarkId) => {
             isBot: !!user.isBot
         }
     })
+
+    // Add system user, because it's not in the database
+    if (userIds.some(user => String(user) === String(ConstantID_SystemUser))) {
+        users.push({
+            _id: ConstantID_SystemUser,
+            username: "System",
+            admin: true,
+            avatarUri: `${networkInformation.baseUrl}/systemUser.webp`,
+            isBot: false
+        })
+    }
+
     return users;
 }
 

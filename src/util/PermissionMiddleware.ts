@@ -25,7 +25,6 @@ export default function P(permissions : (PermissionType|PermissionType[]), scope
             return res.reply(new InvalidReplyMessage(`Invalid ${scope} ID`));
         }
         try {
-            console.log(req.params)
             let check = await checkPermitted(permissions, { scopeType: scope, scopeId: req.params.id }, res.locals.user._id);
             if (!check.permitted) {
                 return res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
@@ -42,23 +41,51 @@ export default function P(permissions : (PermissionType|PermissionType[]), scope
 }
 
 export async function checkPermittedQuarkResponse(permissions: (PermissionType|PermissionType[]), scopeId: string, userId: string, res) {
-    let check = await checkPermittedQuark(permissions, scopeId, userId);
-    if (!check.permitted) {
-        res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+    try {
+        let check = await checkPermittedQuark(permissions, scopeId, userId);
+        if (!check.permitted) {
+            res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+            return false;
+        } else {
+            return true;
+        }
+    } catch (e : any) {
+        if (e?.message?.includes("does not exist")) {
+            res.reply(new NotFoundReply(e.message));
+            return false;
+        }
+        if (e?.message?.includes("invalid")) {
+            res.reply(new InvalidReplyMessage(e.message));
+            return false;
+        }
+        console.error(e);
+        res.reply(new ServerErrorReply());
         return false;
-    } else {
-        return true;
     }
 }
 
 
 export async function checkPermittedChannelResponse(permissions: (PermissionType|PermissionType[]), scopeId: string, userId: string, res, quarkId: undefined|string = undefined) {
-    let check = await checkPermittedChannel(permissions, scopeId, userId, quarkId);
-    if (!check.permitted) {
-        res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+    try {
+        let check = await checkPermittedChannel(permissions, scopeId, userId, quarkId);
+        if (!check.permitted) {
+            res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
+            return false;
+        } else {
+            return true;
+        }
+    } catch (e : any) {
+        if (e?.message?.includes("does not exist")) {
+            res.reply(new NotFoundReply(e.message));
+            return false;
+        }
+        if (e?.message?.includes("invalid")) {
+            res.reply(new InvalidReplyMessage(e.message));
+            return false;
+        }
+        console.error(e);
+        res.reply(new ServerErrorReply());
         return false;
-    } else {
-        return true;
     }
 }
 

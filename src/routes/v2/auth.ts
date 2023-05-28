@@ -12,6 +12,7 @@ import Auth from "../../util/Auth.js";
 const router = express.Router();
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
+// FIXME
 router.post("/token", async (req, res) => {
     if (!req?.body?.password || !req?.body?.email) return res.status(400).json(new InvalidReplyMessage("Request body must include an email-password pair"))
 

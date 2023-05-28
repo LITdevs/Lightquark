@@ -162,7 +162,7 @@ router.post("/create", Auth, async (req, res) => {
             _id: quarkId,
             members: [res.locals.user._id], // Add the user to the quark
             name: req.body.name.trim(), // Trim the name to remove any whitespace
-            iconUri: "https://lq.litdevs.org/default.webp", // Use default icon
+            iconUri: `${networkInformation.baseUrl}/default.webp`, // Use default icon
             channels: [defaultChannelId], // Add the default channel
             invite: `${req.body.name.replace(/[^A-Za-z0-9-_.]/g, "-").toLowerCase()}-${Math.floor(Math.random() * 1000000)}`, // Generate random invite code
             owners: [res.locals.user._id] // Add the user to the owners
@@ -215,6 +215,7 @@ import P, {
     checkPermittedChannelResponse,
     checkPermittedQuarkResponse
 } from "../../util/PermissionMiddleware.js";
+import {networkInformation} from "../../index.js";
 router.use("/:quarkId/role", roleSubAPI)
 
 /**
@@ -385,11 +386,11 @@ router.delete("/:id/icon", Auth, P("EDIT_QUARK_ICON", "quark"), async (req, res)
         let quark = await Quarks.findOne({_id: req.params.id, owners: res.locals.user._id});
         if (!quark) return res.status(404).json(new InvalidReplyMessage("Quark not found"));
         let oldIcon = quark.iconUri;
-        if (quark.iconUri === "https://lq.litdevs.org/default.webp") return res.status(400).json(new InvalidReplyMessage("Quark already has the default icon"));
-        quark.iconUri = "https://lq.litdevs.org/default.webp"; // Default icon
+        if (quark.iconUri === `${networkInformation.baseUrl}/default.webp`) return res.status(400).json(new InvalidReplyMessage("Quark already has the default icon"));
+        quark.iconUri = `${networkInformation.baseUrl}/default.webp`; // Default icon
         await quark.save()
         axios.delete(`https://wanderers.cloud/file/${oldIcon.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
-            res.json(new Reply(200, true, {message: "Quark icon has been reset", icon: "https://lq.litdevs.org/default.webp"}));
+            res.json(new Reply(200, true, {message: "Quark icon has been reset", icon: `${networkInformation.baseUrl}/default.webp`}));
 
             // Send update event
             let data = {

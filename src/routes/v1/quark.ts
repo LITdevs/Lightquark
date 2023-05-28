@@ -47,7 +47,7 @@ router.post("/create", Auth, (req, res) => {
         _id: quarkId,
         members: [res.locals.user._id], // Add the user to the quark
         name: req.body.name.trim(), // Trim the name to remove any whitespace
-        iconUri: "https://lq.litdevs.org/default.webp", // Use default icon
+        iconUri: `${networkInformation.baseUrl}/default.webp`, // Use default icon
         emotes: [],
         roles: [],
         bans: [],
@@ -288,15 +288,15 @@ router.delete("/:id/icon", Auth, (req, res) => {
         }
         if (!quark) return res.status(404).json(new InvalidReplyMessage("Quark not found or you are not an owner"));
         let oldIcon = quark.iconUri;
-        if (quark.iconUri === "https://lq.litdevs.org/default.webp") return res.status(400).json(new InvalidReplyMessage("Quark already has the default icon"));
-        quark.iconUri = "https://lq.litdevs.org/default.webp"; // Default icon
+        if (quark.iconUri === `${networkInformation.baseUrl}/default.webp`) return res.status(400).json(new InvalidReplyMessage("Quark already has the default icon"));
+        quark.iconUri = `${networkInformation.baseUrl}/default.webp`; // Default icon
         quark.save((err) => {
             if (err) {
                 console.error(err);
                 return res.json(new ServerErrorReply());
             }
             axios.delete(`https://wanderers.cloud/file/${oldIcon.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
-                res.json(new Reply(200, true, {message: "Quark icon has been reset", icon: "https://lq.litdevs.org/default.webp"}));
+                res.json(new Reply(200, true, {message: "Quark icon has been reset", icon: `${networkInformation.baseUrl}/default.webp`}));
 
                 // Send update event
                 let data = {
