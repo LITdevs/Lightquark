@@ -5,6 +5,7 @@ import SubscriptionManager from "../../classes/SubscriptionManager.js";
 import EventEmitter from "events";
 import {isPermittedToRead} from "./channel.js";
 import db from "../../db.js";
+import {checkPermittedChannel} from "../../util/PermissionMiddleware.js";
 
 // Create a new Subscription Manager and export it
 const sm = new SubscriptionManager();
@@ -99,24 +100,20 @@ async function handleMessage(message, ws, user, socketId) {
                 const sub = (data) => {
                     ws.send(JSON.stringify(data));
                 }
-                sm.subscribe(event, sub, user, socketId);
+                await sm.subscribe(event, sub, user, socketId);
                 ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
 
             } else if (event.split("_")[0] === "channel") {
-                isPermittedToRead(event.split("_")[1], user._id).then(permitted => {
-                    if (permitted) {
-                        const sub = (data) => {
-                            ws.send(JSON.stringify(data));
-                        }
-                        sm.subscribe(event, sub, user, socketId);
-                        ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
-                    } else {
-                        ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403}));
+                let permitted = await checkPermittedChannel("READ_CHANNEL", event.split("_")[1], user._id)
+                if (permitted.permitted) {
+                    const sub = (data) => {
+                        ws.send(JSON.stringify(data));
                     }
-                }).catch(err => {
-                    console.error(err);
-                    ws.send(JSON.stringify({eventId: "error", message: "Internal Server Error", code: 500}));
-                })
+                    await sm.subscribe(event, sub, user, socketId);
+                    ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
+                } else {
+                    ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403}));
+                }
             } else if (event.split("_")[0] === "quark") {
                 let Quarks = db.getQuarks();
                 try {
@@ -125,7 +122,7 @@ async function handleMessage(message, ws, user, socketId) {
                     const sub = (data) => {
                         ws.send(JSON.stringify(data));
                     }
-                    sm.subscribe(event, sub, user, socketId);
+                    await sm.subscribe(event, sub, user, socketId);
                     ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
 
                 } catch (err) {
