@@ -1,7 +1,12 @@
 import Permission from "./Permission.js";
 import db from "../../db.js";
 import {Types} from "mongoose";
-import {ConstantID_OwnerAssignment, ConstantID_OwnerRole, ConstantID_SystemUser} from "../../util/ConstantID.js";
+import {
+    ConstantID_DenyAssignment, ConstantID_DenyRole,
+    ConstantID_OwnerAssignment,
+    ConstantID_OwnerRole,
+    ConstantID_SystemUser
+} from "../../util/ConstantID.js";
 
 export default class PermissionManager {
     private static _instance: PermissionManager;
@@ -169,6 +174,25 @@ export default class PermissionManager {
                 permission: "OWNER",
                 type: "allow"
             })
+        }
+        if (!quark.members.includes(String(userId))) {
+            // User is not a member, deny EVERYTHING
+            assignments.push({
+                _id: ConstantID_DenyAssignment,
+                role: {
+                    _id: ConstantID_DenyRole,
+                    name: "Non-member",
+                    quark: new Types.ObjectId(quarkId),
+                    description: "Not a member",
+                    createdBy: ConstantID_SystemUser,
+                    priority: Infinity
+                },
+                scopeType: "quark",
+                scopeId: new Types.ObjectId(quarkId),
+                permission: "ADMIN",
+                type: "deny"
+            })
+            return assignments;
         }
 
         // Find all permission assignments that affect the user in this scope, both channel and quark level
