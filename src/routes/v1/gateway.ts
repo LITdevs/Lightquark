@@ -3,7 +3,6 @@ import { WsAuth } from "./auth.js";
 import crypto from "crypto";
 import SubscriptionManager from "../../classes/SubscriptionManager.js";
 import EventEmitter from "events";
-import {isPermittedToRead} from "./channel.js";
 import db from "../../db.js";
 import {checkPermittedChannel} from "../../util/PermissionMiddleware.js";
 
