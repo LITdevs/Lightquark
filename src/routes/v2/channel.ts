@@ -242,7 +242,7 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
         let Quark = db.getQuarks();
         let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
 
-        if (req.body.attachments && !(await checkPermittedChannelResponse("WRITE_ATTACHMENT", req.params._id, res.locals.user._id, res, quark?._id))) {
+        if (req.body.attachments && req.body.attachments.length > 0 && !(await checkPermittedChannelResponse("WRITE_ATTACHMENT", req.params.id, res.locals.user._id, res, quark?._id))) {
             return;
         }
 
