@@ -178,6 +178,18 @@ router.post("/create", Auth, async (req, res) => {
         })
         await newChannel.save();
 
+        let Role = db.getRoles();
+        let newRole = new Role({
+            name: "all",
+            color: undefined,
+            quark: newQuark._id,
+            description: "The default role",
+            createdBy: ConstantID_SystemUser,
+            priority: 0,
+            isDefault: true
+        })
+        await newRole.save();
+
         res.json(new Reply(200, true, {message: "Quark created", quark: newQuark}));
     } catch (err) {
         console.error(err);
@@ -216,6 +228,7 @@ import P, {
     checkPermittedQuarkResponse
 } from "../../util/PermissionMiddleware.js";
 import {networkInformation} from "../../index.js";
+import Mongoose from "mongoose";
 router.use("/:quarkId/role", roleSubAPI)
 
 /**

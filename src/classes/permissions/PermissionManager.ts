@@ -202,15 +202,27 @@ export default class PermissionManager {
         // Find all permission assignments that affect the user in this scope, both channel and quark level
         let PermissionAssignments = db.getPermissionAssignments();
         let RoleAssignments = db.getRoleAssignments();
+        let userRoles = await RoleAssignments.find({ user: userId, quark: quarkId }).distinct("role");
+        let defaultRoles =  await RoleAssignments.find({ isDefault: true, quark: quarkId }).distinct("role");
         const permissionAssignments = await PermissionAssignments.find({
             $or: [
                 {
-                    "role": { $in: await RoleAssignments.find({ user: userId, quark: quarkId }).distinct("role") },
+                    "role": { $in: userRoles },
                     "scopeType": "quark",
                     "scopeId": quarkId
                 },
                 {
-                    "role": { $in: await RoleAssignments.find({ user: userId, quark: quarkId }).distinct("role") },
+                    "role": { $in: userRoles },
+                    "scopeType": "channel",
+                    "scopeId": scopeId
+                },
+                {
+                    "role": { $in: defaultRoles },
+                    "scopeType": "quark",
+                    "scopeId": quarkId
+                },
+                {
+                    "role": { $in: defaultRoles },
                     "scopeType": "channel",
                     "scopeId": scopeId
                 }

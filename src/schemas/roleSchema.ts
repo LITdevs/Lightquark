@@ -6,7 +6,8 @@ let RoleSchema = new Mongoose.Schema({
     quark: { type: Mongoose.Types.ObjectId, index: true },
     description: String,
     createdBy: { type: Mongoose.Types.ObjectId, index: true },
-    priority: Number
+    priority: Number,
+    isDefault: { type: Boolean, default: false }
 }, {
     toJSON: { virtuals: true },
     toObject: { virtuals: true }

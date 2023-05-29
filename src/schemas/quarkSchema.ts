@@ -1,6 +1,6 @@
 import * as Mongoose from "mongoose";
 
-export default new Mongoose.Schema({
+const QuarkSchema = new Mongoose.Schema({
     _id: Mongoose.Types.ObjectId,
     members: Array,
     name: String,
@@ -11,4 +11,15 @@ export default new Mongoose.Schema({
     channels: Array,
     invite: { type: String, unique: true },
     owners: Array
+}, {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
+
+QuarkSchema.virtual("roles", {
+    ref: "roles",
+    localField: "_id",
+    foreignField: "quark"
+})
+
+export default QuarkSchema;

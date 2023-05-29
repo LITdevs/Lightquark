@@ -38,10 +38,6 @@ app.use((req, res, next) => {
     next();
 })
 
-import auth from './routes/v1/auth.js';
-import user from './routes/v1/user.js';
-import quark from './routes/v1/quark.js';
-import channel from './routes/v1/channel.js';
 app.use("/v1/auth", authv2);
 app.use("/v1/user", userv2);
 app.use("/v1/quark", quarkv2);
@@ -131,27 +127,41 @@ app.all("*", (req, res) => {
 import gateway from './routes/v1/gateway.js';
 import PermissionManager from "./classes/permissions/PermissionManager.js";
 import NotFoundReply from "./classes/reply/NotFoundReply.js";
+import DefaultRole from "./migrations/DefaultRole.js";
 
 let port = process.env.LQ_PORT || 10000;
 let dbReady = false;
+let loginReady = false;
 let unleashReady = false;
 db.dbEvents.on("login_ready", () => {
+    console.debug("Login database ready")
+    loginReady = true;
+    if (unleashReady && dbReady) startServer();
+});
+
+db.dbEvents.on("lq_ready", () => {
     console.debug("Database ready")
     dbReady = true;
-    if (unleashReady) startServer();
+    if (loginReady && dbReady) startServer();
 });
 
 unleash.on('synchronized', () => {
     console.debug("Unleash ready")
     unleashReady = true;
-    if (dbReady) startServer();
+    if (dbReady && loginReady) startServer();
 });
 
 function startServer() {
+    // Start migrations
+    DefaultRole();
+
+    // Misc
+    const grants = PermissionManager.permissions.OWNER.permission.grants("WRITE_MESSAGE");
+    console.debug(`Owner grants WRITE_MESSAGE? ${grants ? "yes" : "no"}`)
+
+    // Run server and gateway
     const server = app.listen(port, () => {
         console.info(`App listening on ${port}`);
     })
-    gateway(server);
-    const grants = PermissionManager.permissions.OWNER.permission.grants("WRITE_MESSAGE");
-    console.debug(`Owner grants WRITE_MESSAGE? ${grants ? "yes" : "no"}`);
+    gateway(server);;
 }
