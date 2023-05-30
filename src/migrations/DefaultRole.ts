@@ -7,7 +7,7 @@ import {ConstantID_SystemUser} from "../util/ConstantID.js";
 export default async function () {
     let Quarks = db.getQuarks();
     let quarks = await Quarks.find({ _id: { $lt: "64785e100000000000000000" } }).populate("roles")
-    quarks = quarks.filter(quark => quark.roles.length === 0);
+    quarks = quarks.filter(quark => !quark.roles.some(role => role.isDefault));
     for (const quark of quarks) {
         let Role = db.getRoles();
         let role = new Role({

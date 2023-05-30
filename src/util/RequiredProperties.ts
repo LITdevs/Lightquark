@@ -15,6 +15,7 @@ interface IRequiredProperty {
     enum?: string[],
     regex?: RegExp,
     isArray?: boolean,
+    regexFailMessage?: string,
     custom?: (value: any) => {pass: boolean, reason: string}
 }
 
@@ -67,7 +68,7 @@ export default function RequiredProperties(strings: (string|IRequiredProperty)[]
                 // Check regex
                 if (string.regex) {
                     if (!string.regex.test(req.body[string.property])) {
-                        propertyViolations.push({property: string.property, reason: `${string.property} must match regex ${string.regex}`});
+                        propertyViolations.push({property: string.property, reason: string.regexFailMessage || `${string.property} must match regex ${string.regex}`});
                     }
                 }
 
