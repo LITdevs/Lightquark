@@ -120,8 +120,8 @@ export default class PermissionManager {
         relevantAssignments.sort((a, b) => {
             let aValue = a.priority;
             let bValue = b.priority;
-            if (a.scopeType === "channel" && b.scopeType !== "channel") aValue = Infinity;
-            if (a.scopeType !== "channel" && b.scopeType === "channel") bValue = Infinity;
+            if (a.scopeType === "channel" && b.scopeType !== "channel") aValue = Number.MAX_SAFE_INTEGER;
+            if (a.scopeType !== "channel" && b.scopeType === "channel") bValue = Number.MAX_SAFE_INTEGER;
             if (a.scopeType === b.scopeType && a.priority === b.priority) {
                 // Same priority and scope, deny takes priority
                 if (a.type === "deny") aValue += 1;
@@ -142,9 +142,9 @@ export default class PermissionManager {
 
     static async getAssignments(userId, scope: {scopeType: ("quark"|"channel"), scopeId, quarkId?}) {
         let assignments : any[] = [];
-        if (!isValidObjectId(userId)) throw new Error(`Invalid user id ${userId}`);
-        if (!isValidObjectId(scope.scopeId)) throw new Error(`Invalid ${scope.scopeType} ID ${scope.scopeId}`);
-        if (scope?.quarkId && !isValidObjectId(scope.quarkId)) throw new Error(`Invalid quark ID ${scope.quarkId}`);
+        if (!isValidObjectId(userId)) throw new Error(`PM: Invalid user id ${userId}`);
+        if (!isValidObjectId(scope.scopeId)) throw new Error(`PM: Invalid ${scope.scopeType} ID ${scope.scopeId}`);
+        if (scope?.quarkId && !isValidObjectId(scope.quarkId)) throw new Error(`PM: Invalid quark ID ${scope.quarkId}`);
 
         // If scope is a channel, and no quark id was provided, get the quark id from the channel
         let Quarks = db.getQuarks();
@@ -153,7 +153,7 @@ export default class PermissionManager {
         let quark
         if (scope.scopeType === "channel" && !scope.quarkId) {
             quark = await Quarks.findOne({channels: new Types.ObjectId(scope.scopeId)});
-            if (!quark) throw new Error(`Channel ${scope.scopeId} does not exist.`);
+            if (!quark) throw new Error(`PM: Channel ${scope.scopeId} does not exist.`);
             quarkId = quark._id;
         } else if (scope.scopeType === "channel") {
             quarkId = scope.quarkId;
@@ -161,7 +161,8 @@ export default class PermissionManager {
         if (!quark) {
             quark = await Quarks.findOne({_id: quarkId});
         }
-        if (!quark) throw new Error(`Quark ${scope.quarkId} does not exist.`);
+        if (!quark) throw new Error(`PM: Quark ${scope.quarkId} does not exist.`);
+        if (scope.scopeType === "channel" && !quark.channels.includes(scope.scopeId)) throw new Error(`PM: Channel ${scope.scopeId} is not in provided quark ${scope.quarkId}`)
         if (quark.owners.includes(String(userId))) {
             assignments.push({
                 _id: ConstantID_OwnerAssignment,
@@ -171,7 +172,7 @@ export default class PermissionManager {
                     quark: new Types.ObjectId(quarkId),
                     description: "Quark owner",
                     createdBy: ConstantID_SystemUser,
-                    priority: Infinity
+                    priority: Number.MAX_SAFE_INTEGER
                 },
                 scopeType: "quark",
                 scopeId: new Types.ObjectId(quarkId),
@@ -189,7 +190,7 @@ export default class PermissionManager {
                     quark: new Types.ObjectId(quarkId),
                     description: "Not a member",
                     createdBy: ConstantID_SystemUser,
-                    priority: Infinity
+                    priority: Number.MAX_SAFE_INTEGER
                 },
                 scopeType: "quark",
                 scopeId: new Types.ObjectId(quarkId),

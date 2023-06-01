@@ -6,6 +6,9 @@ import {isValidObjectId, Types} from "mongoose";
 import NotFoundReply from "../../../classes/reply/NotFoundReply.js";
 import RequiredProperties from "../../../util/RequiredProperties.js";
 import {checkPermittedQuarkResponse} from "../../../util/PermissionMiddleware.js";
+import PermissionManager from "../../../classes/permissions/PermissionManager.js";
+import InvalidReplyMessage from "../../../classes/reply/InvalidReplyMessage.js";
+import ServerErrorReply from "../../../classes/reply/ServerErrorReply.js";
 
 const router = express.Router({
     mergeParams: true
@@ -67,6 +70,49 @@ router.post('/', Auth, RequiredProperties([
     await newRole.save();
     res.reply(new Reply(201, true, { message: "Role created", role: newRole}));
 });
+
+router.get('/me', Auth, async (req, res) => {
+    if (!isValidObjectId(req.params.quarkId)) return res.reply(new Reply(400, false, { message: "Invalid quark ID" }));
+    let Roles = db.getRoles();
+    let assignments = await Roles.find({quark: req.params.quarkId}).populate("roleAssignments").populate("permissionAssignments")
+    assignments = assignments.filter(role => {
+        if (role.isDefault) return true;
+        return role.roleAssignments.some(assignment => String(assignment.user) === String(res.locals.user._id))
+    })
+    res.reply(new Reply(200, true, { message: "Here is the list", assignments }))
+})
+
+
+router.get('/permissions', Auth, async (req, res) => {
+    if (!isValidObjectId(req.params.quarkId)) return res.reply(new Reply(400, false, { message: "Invalid quark ID" }));
+    try {
+        let assignments = await PermissionManager.getAssignments(res.locals.user._id, {scopeType: "quark", scopeId: req.params.quarkId});
+        res.reply(new Reply(200, true, { message: "List of your permission assignments in quark scope", assignments }));
+    } catch (e : any) {
+        if (e.message.startsWith("PM:")) {
+            res.reply(new InvalidReplyMessage(e.message))
+        } else {
+            res.reply(new ServerErrorReply())
+            console.error(e)
+        }
+    }
+})
+
+router.get('/permissions/:channelId', Auth, async (req, res) => {
+    if (!isValidObjectId(req.params.quarkId)) return res.reply(new Reply(400, false, { message: "Invalid quark ID" }));
+    if (!isValidObjectId(req.params.channelId)) return res.reply(new Reply(400, false, { message: "Invalid channel ID" }));
+    try {
+        let assignments = await PermissionManager.getAssignments(res.locals.user._id, {scopeType: "channel", scopeId: req.params.channelId, quarkId: req.params.quarkId});
+        res.reply(new Reply(200, true, { message: "List of your permission assignments in channel scope", assignments }))
+    } catch (e : any) {
+        if (e.message.startsWith("PM:")) {
+            res.reply(new InvalidReplyMessage(e.message))
+        } else {
+            res.reply(new ServerErrorReply())
+            console.error(e)
+        }
+    }
+})
 
 router.get('/:roleId', Auth, async (req, res) => {
     if (!isValidObjectId(req.params.roleId)) return res.reply(new Reply(400, false, { message: "Invalid role ID" }));
@@ -158,5 +204,6 @@ router.delete('/:roleId', Auth, async (req, res) => {
     await PermissionAssignments.deleteMany({role: req.params.roleId});
 
 });
+
 
 export default router;

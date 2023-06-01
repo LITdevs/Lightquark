@@ -32,7 +32,7 @@ router.get("/me", Auth, async (req, res) => {
             let newChannels = await Promise.all(quarkChannels.map(async (channel) => {
                 let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
                 if (foundChannel) channel = foundChannel;
-                if ((await checkPermittedChannel("READ_CHANNEL", channel, res.locals.user._id, quarkId)).permitted) {
+                if ((await checkPermittedChannel("READ_CHANNEL", String(channel._id), res.locals.user._id, quarkId)).permitted) {
                     return channel;
                 }
                 return undefined;
@@ -277,7 +277,7 @@ router.get("/:id", Auth, async (req, res) => {
         quark.channels = await Promise.all(quark.channels.map(async (channel) => {
             let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
             if (foundChannel) channel = foundChannel;
-            if ((await checkPermittedChannel("READ_CHANNEL", channel, res.locals.user._id, quark._id)).permitted) {
+            if ((await checkPermittedChannel("READ_CHANNEL", channel._id, res.locals.user._id, quark._id)).permitted) {
                 return channel;
             }
         }))
@@ -317,8 +317,9 @@ router.post("/invite/:invite", Auth, async (req, res) => {
         // Is this going to work? I don't know.
         // Am I going to test it? No.
         // Is it going to production? Yes!
+        // Did it break things? Yes!
         inviteQuark.channels = await Promise.all(inviteQuark.channels.filter(async (channel) => {
-            return (await checkPermittedChannel("READ_CHANNEL", channel, res.locals.user._id, inviteQuark._id)).permitted;
+            return (await checkPermittedChannel("READ_CHANNEL", channel._id, res.locals.user._id, inviteQuark._id)).permitted;
         }))
         res.json(new Reply(200, true, {message: "Joined quark", quark: inviteQuark}));
 
