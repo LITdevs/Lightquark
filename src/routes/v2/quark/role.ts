@@ -159,9 +159,6 @@ router.patch('/:roleId', Auth, RequiredProperties([
         optional: true
     }
 ]), async (req, res) => {
-    // i dont want to write this
-    // permissions array should be translated to permissionAssignments
-
     if (!isValidObjectId(req.params.roleId)) return res.reply(new Reply(400, false, { message: "Invalid role ID" }));
     if (!isValidObjectId(req.params.quarkId)) return res.reply(new Reply(400, false, { message: "Invalid quark ID" }));
     if (!(await checkPermittedQuarkResponse("EDIT_QUARK_ROLES", req.params.quarkId, res.locals.user._id, res))) return;
@@ -180,6 +177,8 @@ router.patch('/:roleId', Auth, RequiredProperties([
     if (req.body.priority) role.priority = req.body.priority;
 
     if (req.body.permissions) {
+        // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+        // I DONT WANT TO WRITE THIIIIIIIIIIIIIIIIIIIIIIIIIIS
         return res.reply(new Reply(501, false, { message: "Not implemented" }));
     }
 
