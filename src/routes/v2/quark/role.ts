@@ -177,9 +177,30 @@ router.patch('/:roleId', Auth, RequiredProperties([
     if (req.body.priority) role.priority = req.body.priority;
 
     if (req.body.permissions) {
-        // AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-        // I DONT WANT TO WRITE THIIIIIIIIIIIIIIIIIIIIIIIIIIS
-        return res.reply(new Reply(501, false, { message: "Not implemented" }));
+        let Quarks = db.getQuarks();
+        let quark = await Quarks.findOne({_id: req.params.quarkId});
+        if (!quark) return res.reply(new NotFoundReply("Quark not found"));
+
+        // Perform validation
+        req.body.permissions.forEach(permission => {
+            if (typeof permission !== "object") return res.reply(new InvalidReplyMessage("Permissions must be an array of objects"));
+            if (!permission.hasOwnProperty("permission")) return res.reply(new InvalidReplyMessage("Permissions must have a permission property"));
+            if (typeof permission.permission !== "string") return res.reply(new InvalidReplyMessage("Permission property must be a string"));
+            if (!permission.hasOwnProperty("type")) return res.reply(new InvalidReplyMessage("Permissions must have a type property"));
+            if (!["allow", "deny", "ignore"].includes(permission.type)) return res.reply(new InvalidReplyMessage("Type property must be in enum ['allow', 'deny', 'ignore']"));
+            if (!permission.hasOwnProperty("scopeType")) return res.reply(new InvalidReplyMessage("Permissions must have a scopeType property"));
+            if (!["quark", "channel"].includes(permission.scopeType)) return res.reply(new InvalidReplyMessage("scopeType property must be in enum ['quark', 'channel']"));
+            if (permission.scopeType === "channel" && !permission.hasOwnProperty("scopeId")) return res.reply(new InvalidReplyMessage("Permissions must have a scopeId property if scopeType is channel"));
+            if (permission.scopeType === "channel" && !isValidObjectId(permission.scopeId)) return res.reply(new InvalidReplyMessage("scopeId property must be a valid object ID"));
+            if (permission.scopeType === "channel") {
+                if (!quark.channels.includes(permission.scopeId)) return res.reply(new InvalidReplyMessage("Channel ID is not a channel in this quark"));
+            }
+            if (!PermissionManager.isRealPermission(permission.permission)) return res.reply(new InvalidReplyMessage(`Unknown permission ${permission.permission}`));
+        })
+
+
+        return res.reply(new Reply(501, false, { message: "Not implemented" }))
+
     }
 
     await role.save();

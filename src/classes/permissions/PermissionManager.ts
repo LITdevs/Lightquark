@@ -72,6 +72,10 @@ export default class PermissionManager {
         PermissionManager.permissions[permissionName] = {permission: new Permission(permissionName, scopes, children), description: description, default: defaultPermission};
     }
 
+    public static isRealPermission(permission: PermissionType) {
+        return !!PermissionManager.permissions[permission];
+    }
+
     /**
      *
      * @param permission
