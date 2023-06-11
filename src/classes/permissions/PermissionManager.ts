@@ -134,7 +134,6 @@ export default class PermissionManager {
             return bValue - aValue;
         });
 
-        //console.log(relevantAssignments)
         // Now, the first assignment is the one that matters.
         let assignment = relevantAssignments[0];
         if (assignment.type === "deny") return false;
@@ -208,7 +207,8 @@ export default class PermissionManager {
         let PermissionAssignments = db.getPermissionAssignments();
         let RoleAssignments = db.getRoleAssignments();
         let userRoles = await RoleAssignments.find({ user: userId, quark: quarkId }).distinct("role");
-        let defaultRoles =  await RoleAssignments.find({ isDefault: true, quark: quarkId }).distinct("role");
+        let Roles = db.getRoles();
+        let defaultRoles =  await Roles.find({ isDefault: true, quark: quarkId }).distinct("_id");
         const permissionAssignments = await PermissionAssignments.find({
             $or: [
                 {

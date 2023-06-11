@@ -182,7 +182,7 @@ router.patch('/:roleId', Auth, RequiredProperties([
         if (!quark) return res.reply(new NotFoundReply("Quark not found"));
 
         // Perform validation
-        req.body.permissions.forEach(permission => {
+        for (const permission of req.body.permissions) {
             if (typeof permission !== "object") return res.reply(new InvalidReplyMessage("Permissions must be an array of objects"));
             if (!permission.hasOwnProperty("permission")) return res.reply(new InvalidReplyMessage("Permissions must have a permission property"));
             if (typeof permission.permission !== "string") return res.reply(new InvalidReplyMessage("Permission property must be a string"));
@@ -196,11 +196,50 @@ router.patch('/:roleId', Auth, RequiredProperties([
                 if (!quark.channels.includes(permission.scopeId)) return res.reply(new InvalidReplyMessage("Channel ID is not a channel in this quark"));
             }
             if (!PermissionManager.isRealPermission(permission.permission)) return res.reply(new InvalidReplyMessage(`Unknown permission ${permission.permission}`));
-        })
+            if (!PermissionManager.permissions[permission.permission].permission.scopes.includes(permission.scopeType)) return res.reply(new InvalidReplyMessage(`Permission ${permission.permission} does not support scope type ${permission.scopeType}`));
+            const dupes = req.body.permissions.filter(perm => perm.permission === permission.permission && perm.scopeId === permission.scopeId);
+            if (dupes.length > 1) return res.reply(new InvalidReplyMessage(`Duplicate permission: ${permission.permission} is assigned ${dupes.length} times`));
+        }
 
+        for (const permission of req.body.permissions) {
+            const permissionObject = PermissionManager.permissions[permission.permission].permission;
+            for (const childPermission of permissionObject.children) {
 
-        return res.reply(new Reply(501, false, { message: "Not implemented" }))
+                const childPermissionAssignment = req.body.permissions.find(perm => perm.scopeId === permission.scopeId && perm.permission === childPermission.type);
+                if (!childPermissionAssignment) {
+                    // No assignment for this child
+                    continue;
+                }
+                // Check if a child permission is being denied while the parent is allowed (and reject the edit)
+                if (childPermissionAssignment.type === "deny" && permission.type === "allow") {
+                    return res.reply(new InvalidReplyMessage(`Permission conflict: You can't deny ${childPermission.type} while allowing ${permission.permission}`));
+                }
+            }
+        }
+        let PermissionAssignments = db.getPermissionAssignments();
+        // Delete old assignments
+        let deletion = PermissionAssignments.deleteMany({role: role._id});
 
+        let assignments : any[] = [];
+
+        // Create new assignments from req.body.permissions
+        for (const permission of req.body.permissions) {
+            assignments.push(new PermissionAssignments({
+                role: role._id,
+                permission: permission.permission,
+                type: permission.type,
+                scopeType: permission.scopeType,
+                // For quark scopeType, scopeId may not actually be correct (it may be a channel ID if the client is trying to break the system)
+                scopeId: permission.scopeType === "channel" ? new Types.ObjectId(permission.scopeId) : role.quark
+            }));
+        }
+
+        // Make sure deletion is done
+        await deletion;
+
+        let assignmentSavePromises = assignments.map(assignment => assignment.save());
+
+        await Promise.all(assignmentSavePromises);
     }
 
     await role.save();
