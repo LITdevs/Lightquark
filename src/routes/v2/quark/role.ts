@@ -9,10 +9,13 @@ import {checkPermittedQuarkResponse} from "../../../util/PermissionMiddleware.js
 import PermissionManager from "../../../classes/permissions/PermissionManager.js";
 import InvalidReplyMessage from "../../../classes/reply/InvalidReplyMessage.js";
 import ServerErrorReply from "../../../classes/reply/ServerErrorReply.js";
+import FeatureFlag from "../../../util/FeatureFlagMiddleware.js";
 
 const router = express.Router({
     mergeParams: true
 });
+
+router.use(FeatureFlag("LQ_RoleAPI"));
 
 /**
  * Get all roles in a quark
