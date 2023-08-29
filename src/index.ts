@@ -136,32 +136,39 @@ let unleashReady = false;
 db.dbEvents.on("login_ready", () => {
     console.debug("Login database ready")
     loginReady = true;
-    if (unleashReady && dbReady) startServer();
+    startServer();
 });
 
 db.dbEvents.on("lq_ready", () => {
     console.debug("Database ready")
     dbReady = true;
-    if (loginReady && dbReady) startServer();
+    startServer();
 });
 
 unleash.on('synchronized', () => {
     console.debug("Unleash ready")
     unleashReady = true;
-    if (dbReady && loginReady) startServer();
+    startServer();
 });
 
-function startServer() {
+async function startServer() {
+    if (!dbReady) return;
+    if (!loginReady) return;
+    if (!unleashReady) return;
     // Start migrations
-    DefaultRole();
+    await DefaultRole();
 
     // Misc
     const grants = PermissionManager.permissions.OWNER.permission.grants("WRITE_MESSAGE");
     console.debug(`Owner grants WRITE_MESSAGE? ${grants ? "yes" : "no"}`)
+    if (!grants) {
+        console.error("HUH??? Exiting before things explode")
+        return process.exit(1111)
+    }
 
     // Run server and gateway
     const server = app.listen(port, () => {
         console.info(`App listening on ${port}`);
     })
-    gateway(server);;
+    gateway(server);
 }
