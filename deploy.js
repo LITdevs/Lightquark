@@ -1,5 +1,5 @@
 const token = process.env.SPACE_TOKEN;
-const environment = process.env.JB_SPACE_GIT_BRANCH === "refs/heads/dev" ? "lightquark-dev" : "lightquark";
+const environment = process.env.JB_SPACE_GIT_BRANCH === "refs/heads/dev" ? "equinox" : "lightquark";
 console.log("Branch: ", process.env.JB_SPACE_GIT_BRANCH);
 import axios from "axios";
 
