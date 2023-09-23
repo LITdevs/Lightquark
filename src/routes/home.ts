@@ -43,9 +43,12 @@ router.get("/v1/ping", (req, res ) => {
 	res.send("pong");
 })
 
-router.get("/d/:quarkId/:channelId?/:messageId?", (req, res) => {
-	let lqLink = `lightquark://${req.params.quarkId}${req.params.channelId ? `/${req.params.channelId}`: ""}${req.params.messageId ? `/${req.params.messageId}`: ""}`
+router.get("/d/:linkType/*", (req, res) => {
+	req.params.relevantIds = req.originalUrl.split(`/d/${req.params.linkType}`)[1]
+	console.log(req.params.relevantIds)
+	let lqLink = `web+lq://${networkInformation.linkBase}:${req.params.linkType}:${req.params.relevantIds}`
 	res.redirect(lqLink)
+	// TODO: Show a page explaining what LQ is and redirect with JS
 })
 
 router.get("/features", (req, res) => {
@@ -58,6 +61,7 @@ const knownClients = JSON.parse(fs.readFileSync("src/util/knownClients.json").to
 import CapabilityParser from "../util/CapabilityParser.js";
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
 import db from "../db.js";
+import {networkInformation} from "../index.js";
 
 router.get("/features/:clientName", async (req, res) => {
 	try {

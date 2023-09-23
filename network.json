@@ -1,9 +1,11 @@
 {
 	"name": "Equinox",
+	"description": "Official development network of Lightquark. See [Official network](https://lightquark.network) for a more stable experience.",
 	"environment": "dev",
 	"maintainer": "LIT Devs",
+	"linkBase": "equinox.lightquark.network",
 	"baseUrl": "https://equinox.lightquark.network",
-	"iconUri": "https://equinox.lightquark.network/alt_alt_alt_icon.png",
+	"iconUrl": "https://equinox.lightquark.network/alt_alt_alt_icon.png",
 	"authenticationSourceRegisterUrl": "https://auth.litdevs.org/register",
 	"authenticationSourceName": "LITauth",
 	"gateway": "wss://gateway.equinox.lightquark.network",
