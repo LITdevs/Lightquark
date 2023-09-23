@@ -2,13 +2,13 @@ import * as Mongoose from "mongoose";
 
 const QuarkSchema = new Mongoose.Schema({
     _id: Mongoose.Types.ObjectId,
-    members: Array,
+    members: Array, // <--- also dumb, replace eventually
     name: String,
     iconUri: String,
     //emotes: Array, lol no this is dumb
     //roles: Array,
     //bans: Array,
-    channels: Array,
+    channels: Array, // <---- STUPID >:( #LIGHTQUARK-45
     invite: { type: String, unique: true },
     owners: Array
 }, {

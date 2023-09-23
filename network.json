@@ -1,9 +1,12 @@
 {
-	"name": "Lightquark Dev",
+	"name": "Equinox",
 	"environment": "dev",
 	"maintainer": "LIT Devs",
-	"baseUrl": "https://lq-dev.litdevs.org",
-	"iconUri": "https://lq-dev.litdevs.org/alt_alt_alt_icon.png",
-	"authenticationSource": "https://auth.litdevs.org",
-	"gateway": "https://lq-gateway-dev.litdevs.org"
+	"baseUrl": "https://equinox.lightquark.network",
+	"iconUri": "https://equinox.lightquark.network/alt_alt_alt_icon.png",
+	"authenticationSourceRegisterUrl": "https://auth.litdevs.org/register",
+	"authenticationSourceName": "LITauth",
+	"gateway": "wss://gateway.equinox.lightquark.network",
+	"privacyPolicy": "https://equinox.lightquark.network/privacy",
+	"termsOfService": "https://equinox.lightquark.network/terms"
 }
