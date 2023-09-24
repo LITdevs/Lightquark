@@ -57,7 +57,7 @@ export default class PermissionManager {
         r("ASSIGN_ROLE", "deny", "Assign roles to users", [], ["quark"]);
         //r("NICKNAME_OTHER", "deny", "Change other people's nicknames", [], ["quark"]);
         r("MANAGE_QUARK", "deny", "Manage quark. Grants all quark management permissions.", ["EDIT_QUARK_ICON", "EDIT_QUARK_NAME", "EDIT_QUARK_DESCRIPTION", "EDIT_QUARK_INVITE", "EDIT_QUARK_ROLES"], ["quark"]);
-        r("ADMIN", "deny", "General admin. Grants all admin permissions.", ["MANAGE_QUARK", "CHANNEL_ADMIN", "ASSIGN_ROLE"/*, "NICKNAME_OTHER"*/], ["quark"]);
+        r("ADMIN", "deny", "General admin. Grants all admin permissions.", ["MANAGE_QUARK", "CHANNEL_ADMIN", "ASSIGN_ROLE", "MANAGE_EMOTE"/*, "NICKNAME_OTHER"*/], ["quark"]);
         r("OWNER", "deny", "Owner of the quark. Grants all permissions.", ["ADMIN"], ["quark"]);
         console.timeEnd("PermissionManager.registerPermissions");
     }
@@ -83,8 +83,10 @@ export default class PermissionManager {
      * @param scope
      */
     public static async isPermitted(permission: PermissionType, userId, scope: {scopeType: ("quark"|"channel"), scopeId, quarkId?}) : Promise<boolean> {
+        //console.log(permission, userId)
         if (!PermissionManager.permissions[permission]) throw new Error(`Permission ${permission} is not registered.`);
         let permissionAssignments = await this.getAssignments(userId, scope);
+        //console.log(permissionAssignments)
         /*
         Determine if the user has the permission based on the following factors:
         - Channel permissions rule!! They override quark permissions even with higher priority.
@@ -98,8 +100,10 @@ export default class PermissionManager {
         // Determine which assignments are relevant
         let relevantAssignments = permissionAssignments.filter(assignment => {
             if (assignment.type === "ignore") return false;
+            //console.log("ra", this.permissions[assignment.permission])
             return this.permissions[assignment.permission].permission.grants(permission);
         })
+        //console.log("relevant", relevantAssignments)
 
         if (relevantAssignments.length === 0) {
             // No relevant assignments, fallback to default permission
@@ -136,6 +140,7 @@ export default class PermissionManager {
 
         // Now, the first assignment is the one that matters.
         let assignment = relevantAssignments[0];
+        //console.log(relevantAssignments)
         if (assignment.type === "deny") return false;
         if (assignment.type === "allow") return true;
 

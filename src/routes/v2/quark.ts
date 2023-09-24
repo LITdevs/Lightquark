@@ -544,11 +544,12 @@ router.post("/:id/emotes", Auth, P("CREATE_EMOTE", "quark"), RequiredProperties(
         let formData = new FormData();
 
         // Perform sharp magic
-        let image = sharp(fileBuffer);
+        let image = sharp(fileBuffer, { pages: -1 });
         let metadata = await image.metadata();
         if (!metadata || !metadata.width || !metadata.height) return res.status(400).json(new InvalidReplyMessage("This image is broken"));
         if (metadata.width > 128 || metadata.height > 128) {
             // Scale down so largest side is 128
+            metadata.height = metadata.pageHeight || metadata.height; // Make sure height is correct for multi-paged media (gifs)
             let newWidth = metadata.width;
             let newHeight = metadata.height;
             if (metadata.width > metadata.height) {
