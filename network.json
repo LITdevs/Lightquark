@@ -1,14 +1,14 @@
 {
-	"name": "Equinox",
-	"description": "Official development network of Lightquark. See [Official network](https://lightquark.network) for a more stable experience.",
-	"environment": "dev",
+	"name": "Lightquark",
+	"description": "Official network of Lightquark. See [Equinox network](https://equinox.lightquark.network) for the latest development features.",
+	"environment": "production",
 	"maintainer": "LIT Devs",
-	"linkBase": "equinox.lightquark.network",
-	"baseUrl": "https://equinox.lightquark.network",
-	"iconUrl": "https://equinox.lightquark.network/alt_alt_alt_icon.png",
+	"linkBase": "lightquark.network",
+	"baseUrl": "https://lq.litdevs.org",
+	"iconUrl": "https://lq.litdevs.org/alt_icon.svg",
 	"authenticationSourceRegisterUrl": "https://auth.litdevs.org/register",
 	"authenticationSourceName": "LITauth",
-	"gateway": "wss://gateway.equinox.lightquark.network",
-	"privacyPolicy": "https://equinox.lightquark.network/privacy",
-	"termsOfService": "https://equinox.lightquark.network/terms"
+	"gateway": "wss://gateway.lightquark.network",
+	"privacyPolicy": "https://lightquark.network/privacy",
+	"termsOfService": "https://lightquark.network/terms"
 }
