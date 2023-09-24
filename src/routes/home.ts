@@ -15,6 +15,31 @@ router.get("/developers/interoperability/clientAttributeSearch", (req, res) => {
 	res.sendFile("public/clientAttributeSearch.html", {root: path.resolve()});
 })
 
+router.get("/developers/interoperability/preferenceSearch", (req, res) => {
+	res.sendFile("public/preferenceSearch.html", {root: path.resolve()});
+})
+
+router.get("/developers/interoperability/api/preferences", async (req, res) => {
+	const Preferences = db.getPreferences()
+
+	let keys = await Preferences.aggregate([
+		{
+			$match: {
+				key: { $not: {$size: 0} }
+			}
+		},
+		{ $unwind: "$key" },
+		{
+			$group: {
+				_id: {$toLower: '$key'},
+				count: { $sum: 1 }
+			}
+		}
+	]);
+
+	res.json(keys)
+})
+
 router.get("/developers/interoperability/api/attributes", async (req, res) => {
 	const Messages = db.getMessages();
 

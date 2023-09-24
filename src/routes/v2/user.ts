@@ -18,6 +18,7 @@ import {getUserBulk} from "./channel.js";
 import FeatureFlag from "../../util/FeatureFlagMiddleware.js";
 import {ConstantID_SystemUser} from "../../util/ConstantID.js";
 import {networkInformation} from "../../index.js";
+import preference from "./user/preference.js";
 
 const router = express.Router();
 
@@ -41,7 +42,6 @@ router.get("/me/nick/:scope", Auth, async (req, res) => {
         res.json(new ServerErrorReply());
     }
 })
-
 router.put("/me/nick", Auth, async (req, res) => {
     if (!req.body.scope) return res.json(new InvalidReplyMessage("Provide a scope"));
     if (req.body.nickname && req.body.nickname.trim().length > 32) return res.json(new InvalidReplyMessage("Nickname must be 32 characters or less"));
@@ -151,6 +151,8 @@ router.delete("/me/avatar", Auth, async (req, res) => {
         return res.json(new ServerErrorReply());
     }
 })
+
+router.use("/me/preferences", preference);
 
 /**
  * Find a user by their ID
