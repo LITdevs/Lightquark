@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "lightquark",
-  "version": "0.0.22",
+  "version": "0.0.46",
   "description": "Proof of Concept",
   "exports": "./src/index.ts",
   "repository": "https://github.com/LITdevs/Lightquark.git",
@@ -17,10 +17,11 @@
     "file-type": "^18.0.0",
     "form-data": "^4.0.0",
     "jose": "^4.10.4",
-    "mongoose": "^6.7.0",
+    "mongoose": "^7.1.1",
     "sharp": "^0.32.1",
     "tail": "^2.2.4",
     "typescript": "^4.8.4",
+    "unleash-client": "^3.21.0",
     "ws": "^8.11.0"
   },
   "devDependencies": {

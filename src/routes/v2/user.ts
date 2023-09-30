@@ -13,6 +13,12 @@ import InvalidReplyMessage from "../../classes/reply/InvalidReplyMessage.js";
 import {subscriptionListener} from "../v1/gateway.js";
 import {getNick} from "../../util/getNickname.js";
 import {isValidObjectId} from "mongoose";
+import RequiredProperties from "../../util/RequiredProperties.js";
+import {getUserBulk} from "./channel.js";
+import FeatureFlag from "../../util/FeatureFlagMiddleware.js";
+import {ConstantID_SystemUser} from "../../util/ConstantID.js";
+import {networkInformation} from "../../index.js";
+import preference from "./user/preference.js";
 
 const router = express.Router();
 
@@ -36,13 +42,11 @@ router.get("/me/nick/:scope", Auth, async (req, res) => {
         res.json(new ServerErrorReply());
     }
 })
-
 router.put("/me/nick", Auth, async (req, res) => {
     if (!req.body.scope) return res.json(new InvalidReplyMessage("Provide a scope"));
     if (req.body.nickname && req.body.nickname.trim().length > 32) return res.json(new InvalidReplyMessage("Nickname must be 32 characters or less"));
     if (req.body.scope !== "global" && !isValidObjectId(req.body.scope)) return res.json(new InvalidReplyMessage("Scope must be a valid quark ID or 'global'"));
     try {
-
         const up = (scope, nickname) => {
             // Send update event
             let data = {
@@ -110,14 +114,17 @@ router.put("/me/avatar", Auth, async (req, res) => {
     formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
         if (err) return res.json(new ServerErrorReply());
         response.resume()
-        response.once("data", (data) => {
+        response.once("data", async (data) => {
             let dataString = data.toString().trim();
             let Avatars = db.getAvatars();
-            Avatars.findOneAndUpdate({userId: res.locals.user._id}, {avatarUri: dataString}, {upsert: true}, (err) => {
-                if (err) return res.json(new ServerErrorReply());
+            try {
+                await Avatars.findOneAndUpdate({userId: res.locals.user._id}, {avatarUri: dataString}, {upsert: true});
                 res.json(new Reply(200, true, {message: "Your avatar has been updated", avatar: dataString}));
                 userUpdate(res.locals.user);
-            })
+            } catch (err) {
+                console.error(err);
+                return res.json(new ServerErrorReply());
+            }
         })
         response.once("end", () => {
             if (!fileType) return;
@@ -130,74 +137,96 @@ router.put("/me/avatar", Auth, async (req, res) => {
  * Reset the user's avatar to the default avatar.
  * Default avatar is pulled from LITauth
  */
-router.delete("/me/avatar", Auth, (req, res) => {
+router.delete("/me/avatar", Auth, async (req, res) => {
     let Avatars = db.getAvatars();
-    Avatars.findOneAndDelete({userId: res.locals.user._id}, (err, avatar) => {
-        if (err) {
-            console.error(err);
-            return res.json(new ServerErrorReply());
-        }
+    try {
+        let avatar = await Avatars.findOneAndDelete({userId: res.locals.user._id});
         if (!avatar) return res.status(400).json(new InvalidReplyMessage("You do not have an avatar to delete"));
         axios.delete(`https://wanderers.cloud/file/${avatar.avatarUri.split("file/")[1].split(".")[0]}`, {headers: {authentication: process.env.WC_TOKEN}}).then((response) => {
             res.json(new Reply(200, true, {message: "Your avatar has been reset", avatar: `https://auth.litdevs.org/api/avatar/bg/${res.locals.user._id}`}));
             userUpdate(res.locals.user);
         })
-    })
+    } catch (err) {
+        console.error(err);
+        return res.json(new ServerErrorReply());
+    }
 })
+
+router.use("/me/preferences", preference);
 
 /**
  * Find a user by their ID
  * @param req.params.id The ID of the user to find
  */
-router.get("/:id", Auth, (req, res) => {
+router.get("/:id", Auth, async (req, res) => {
     let Users = db.getLoginUsers();
+
+    // Return system user info, since it's not in the database
+    if (req.params.id === String(ConstantID_SystemUser)) {
+        res.reply(new Reply(200, true, {message: "User found", user: {
+                _id: ConstantID_SystemUser,
+                username: "System",
+                admin: true,
+                avatarUri: `${networkInformation.baseUrl}/systemUser.webp`,
+                isBot: false
+            }}))
+        return;
+    }
+
     // Find the user by their ID
-    Users.findOne({_id: req.params.id}, (err, user) => {
-        if (err) {
-            console.error(err)
-            return res.status(500).json(new ServerErrorReply());
-        }
+    try {
+        let user = await Users.findOne({_id: req.params.id});
         if (!user) return res.json(new Reply(404, false, {message: "User not found"}));
-        let Quarks = db.getQuarks();
-        // Make sure the users share a quark
-        Quarks.findOne({members: {$all: [req.params.id, res.locals.user._id]}}, (err, quark) => {
-            if (err) {
-                console.error(err)
-                return res.status(500).json(new ServerErrorReply());
-            }
-            if (!quark) return res.status(403).json(new ForbiddenReply("You are not in a quark with this user"));
-            let Avatars = db.getAvatars();
-            // Find the avatar of the user
-            Avatars.findOne({userId: user._id}, async (err, avatar) => {
-                if (err) {
-                    console.error(err)
-                    return res.status(500).json(new ServerErrorReply());
-                }
-                if (!avatar) avatar = { avatarUri: `https://auth.litdevs.org/api/avatar/bg/${user._id}`};
-                let safeUser = {
-                    _id: user._id,
-                    username: await getNick(user._id),
-                    avatarUri: avatar.avatarUri,
-                    admin: !!user.admin
-                }
-                res.json(new Reply(200, true, {message: "User found", user: safeUser}));
-            })
-        })
+        let Avatars = db.getAvatars();
+        // Find the avatar of the user
+        let avatar = Avatars.findOne({userId: user._id});
+        if (!avatar) avatar = { avatarUri: `https://auth.litdevs.org/api/avatar/bg/${user._id}`};
+        let safeUser = {
+            _id: user._id,
+            username: await getNick(user._id),
+            avatarUri: avatar.avatarUri,
+            admin: !!user.admin,
+            isBot: !!user.isBot
+        }
+        res.json(new Reply(200, true, {message: "User found", user: safeUser}));
+    } catch (err) {
+        console.error(err)
+        return res.status(500).json(new ServerErrorReply());
+    }
+})
+
+router.post("/bulk", Auth, FeatureFlag("LQ_UserBulkEndpoint"), RequiredProperties([
+    {
+        property: "users",
+        isArray: true
+    },
+    {
+        property: "quark",
+        optional: true,
+        type: "string"
+    }
+]), async (req, res) => {
+    let invalidIds : any[] = [];
+    req.body.users.forEach((user) => {
+        if (typeof user !== "string" || !isValidObjectId(user)) invalidIds.push(user);
     })
+    if (invalidIds.length > 0) return res.reply(new InvalidReplyMessage(`Invalid IDs: ${invalidIds.join(", ")}`))
+    if (req.body.quark && !isValidObjectId(req.body.quark)) return res.reply(new InvalidReplyMessage("Invalid quark ID"))
+
+    let bulkUsers = await getUserBulk(req.body.users, req.body.quark || undefined);
+
+    res.reply(new Reply(200, true, { message: "Users retrieved", users: bulkUsers }))
 })
 
 /**
  * Send memberUpdate event to all quarks the user is in
  * @param user
  */
-function userUpdate(user : any) {
+async function userUpdate(user : any) {
     let Quarks = db.getQuarks();
-    Quarks.find({members: user._id}, (err, quarks) => {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        quarks.forEach(async (quark) => {
+    try {
+        let quarks = await Quarks.find({members: user._id});
+        for (const quark of quarks) {
             // Send update event
             let data = {
                 eventId: "memberUpdate",
@@ -205,8 +234,13 @@ function userUpdate(user : any) {
                 user: { _id: user._id, username: await getNick(user._id, quark._id), avatarUri: user.avatar, admin: !!user.admin }
             }
             subscriptionListener.emit("event", `quark_${quark._id}` , data);
-        })
-    })
+        }
+    } catch (err) {
+        if (err) {
+            console.error(err);
+            return;
+        }
+    }
 }
 
 export default router;

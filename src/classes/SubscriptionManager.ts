@@ -1,5 +1,6 @@
 import {isValidObjectId} from "mongoose";
 import db from "../db.js";
+import {checkPermittedChannel} from "../util/PermissionMiddleware.js";
 
 let realEvents = [
     "quark",
@@ -35,7 +36,7 @@ export default class SubscriptionManager {
         this.clients = [];
     }
 
-    subscribe(event : string, callback : Function, user, socketId) {
+    async subscribe(event : string, callback : Function, user, socketId) {
         let validEvent = this.validEvent(event);
         if (validEvent !== 1) return validEvent;
 
@@ -44,6 +45,13 @@ export default class SubscriptionManager {
         }
 
         if (this.subscriptions[event].some(sub => sub.socketId === socketId)) return 5; // Already subscribed
+
+        let eventScope = event.split("_")[0];
+        let eventScopeId = event.split("_")[1];
+        if (eventScope === "channel") {
+            if (!(await checkPermittedChannel("READ_CHANNEL", eventScopeId, user._id))) return 6;
+        }
+
         this.subscriptions[event].push({ callback, userId: user._id, socketId });
 
         return 1
@@ -87,14 +95,45 @@ export default class SubscriptionManager {
     event(event : string, data) {
         if (this.validEvent(event) !== 1) return;
         if (!this.subscriptions[event]) return;
-        this.subscriptions[event].forEach(sub => {
+        this.subscriptions[event].forEach(async sub => {
             try {
+                // me events are only for the user that triggered them
                 if (event === "me" && sub.userId !== data.userId) return;
+
+                // Check if the user is allowed to see this event
+                let eventScope = event.split("_")[0];
+                let eventScopeId = event.split("_")[1];
+                let eventType = data.eventId;
+
+                // It is quite silly that this is a switch statement
+                // Not going to change it though
+                switch (eventType) {
+                    case "messageCreate":
+                    case "messageDelete":
+                    case "messageUpdate":
+                        if (!(await checkPermittedChannel("READ_CHANNEL", eventScopeId, sub.userId)).permitted) {
+                            // Not allowed to see this channel
+                            return;
+                        }
+                        break;
+                    case "channelCreate":
+                    case "channelDelete":
+                    case "channelUpdate":
+                        if (!(await checkPermittedChannel("READ_CHANNEL", data.channel._id, sub.userId)).permitted) {
+                            // Not allowed to see this channel
+                            return;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+
                 sub.callback(data);
             } catch (e) {
                 console.error(e);
             }
         });
+
         // Clean up subscriptions that would break permissions
         if (data.eventId === "memberLeave") {
             let quark = data.quark;
