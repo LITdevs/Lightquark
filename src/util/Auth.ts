@@ -2,6 +2,7 @@ import UnauthorizedReply from "../classes/reply/UnauthorizedReply.js";
 import * as jose from "jose";
 import db from "../db.js";
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
+import {networkInformation} from "../index.js";
 
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
@@ -13,7 +14,7 @@ export default async function Auth(req, res, next) {
     // jose.jwtVerify throws an error if the JWT is not valid so try {...} catch (e) it
     try {
         const { payload } = await jose.jwtVerify(jwt, secret, {
-            issuer: 'Lightquark',
+            issuer: networkInformation.baseUrl,
             audience: 'Lightquark-client',
         })
         // Store the data in locals
@@ -48,7 +49,7 @@ export default async function Auth(req, res, next) {
 export async function WsAuth(jwt) : Promise<false | object> {
     try {
          const { payload } = await jose.jwtVerify(jwt, secret, {
-            issuer: 'Lightquark',
+            issuer: networkInformation.baseUrl,
             audience: 'Lightquark-client',
         })
         return payload;
