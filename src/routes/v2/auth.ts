@@ -8,6 +8,7 @@ import Reply from "../../classes/reply/Reply.js";
 import * as jose from "jose";
 import {getNick} from "../../util/getNickname.js";
 import Auth from "../../util/Auth.js";
+import {networkInformation} from "../../index.js";
 
 const router = express.Router();
 const secret = new TextEncoder().encode(process.env.JWT_SECRET);
@@ -59,7 +60,7 @@ router.post("/token", async (req, res) => {
             new jose.SignJWT({ admin: !!loginUser.admin, isBot: !!loginUser.isBot, email: loginUser.email, username: await getNick(loginUser._id), _id: loginUser._id, avatar: avatarUri })
                 .setProtectedHeader({ alg: 'HS256', typ: "JWT" })
                 .setIssuedAt()
-                .setIssuer('Lightquark')
+                .setIssuer(networkInformation.baseUrl)
                 .setAudience('Lightquark-client')
                 .setExpirationTime('1y')
                 .sign(secret).then(jwt => {
