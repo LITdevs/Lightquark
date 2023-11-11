@@ -9,6 +9,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "dev": "yarn sentry:sourcemaps && concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\"",
+    "build": "npx tsc && yarn sentry:sourcemaps",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org litdevs --project lightquark ./dist && sentry-cli --url https://sentry.yggdrasil.cat/ sourcemaps upload --org litdevs --project lightquark ./dist"
   },
   "dependencies": {
