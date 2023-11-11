@@ -8,9 +8,12 @@
   "author": "LIT Devs",
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\""
+    "dev": "yarn sentry:sourcemaps && concurrently \"npx tsc --watch\" \"nodemon -q dist/index.js\"",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org litdevs --project lightquark ./dist && sentry-cli --url https://sentry.yggdrasil.cat/ sourcemaps upload --org litdevs --project lightquark ./dist"
   },
   "dependencies": {
+    "@sentry/cli": "^2.21.3",
+    "@sentry/node": "^7.80.0",
     "axios": "^1.1.3",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",

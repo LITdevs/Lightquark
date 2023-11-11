@@ -40,3 +40,5 @@ dist/**/*
 # ignore yarn.lock
 yarn.lock
 #network.json
+# Sentry Config File
+.sentryclirc
