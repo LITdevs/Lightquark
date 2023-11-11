@@ -1,0 +1,44 @@
+name: Yggdrasil deployment
+
+on:
+  push:
+    branches: [ "dev", "prod" ]
+
+permissions:
+  pull-requests: write
+  contents: write
+
+
+jobs:
+  build:
+
+    runs-on: self-hosted
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      - run: yarn global add pm2@latest
+      - run: pm2 deploy yggdrasil.config.cjs production
+        env:
+          TARGET_BRANCH: "origin/dev"
+          TARGET_HOST: "ember-twin.yggdrasil.cat"
+        if: github.ref_name == 'dev'
+      - run: pm2 deploy yggdrasil.config.cjs production
+        env:
+          TARGET_BRANCH: "origin/prod"
+          TARGET_HOST: "ash-twin.yggdrasil.cat"
+        if: github.ref_name == 'prod'
+      - name: Create commit comment
+        uses: peter-evans/commit-comment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            Changes deployed to server
+            Branch ${{ github.ref_name }}

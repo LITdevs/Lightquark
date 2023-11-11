@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -7,6 +8,22 @@ import { initialize } from 'unleash-client';
 export const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
 const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const app = express();
+
+Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    integrations: [
+        // enable HTTP calls tracing
+        new Sentry.Integrations.Http({ tracing: true }),
+        // enable Express.js middleware tracing
+        new Sentry.Integrations.Express({ app }),
+    ],
+    // Performance Monitoring
+    tracesSampleRate: 1.0,
+    environment: process.env.SENTRY_ENV || "unknown"
+});
+
+app.use(Sentry.Handlers.requestHandler());
+app.use(Sentry.Handlers.tracingHandler());
 
 export const unleash = initialize({
     url: 'https://feature-gacha.litdevs.org/api',
@@ -116,18 +133,27 @@ app.post("/raCreateTest", async (req, res) => {
 })
 */
 
-app.get("/pmTest", async (req, res) => {
-    res.json({message: await PermissionManager.isPermitted("READ_CHANNEL", "62b3515989cdb45c9e06e010", {scopeType: "channel", scopeId: "643aa2e550c913775aec2057"})});
-})
-
 app.all("*", (req, res) => {
     res.reply(new NotFoundReply("Endpoint not found"));
 })
+
+// The error handler must be registered before any other error middleware and after all controllers
+app.use(Sentry.Handlers.errorHandler());
+
+// Optional fallthrough error handler
+app.use(function onError(err, req, res, next) {
+    console.error(err);
+    Sentry.addBreadcrumb({
+        message: "Unhandled server error"
+    })
+    res.reply(new ServerErrorReply());
+});
 
 import gateway from './routes/v1/gateway.js';
 import PermissionManager from "./classes/permissions/PermissionManager.js";
 import NotFoundReply from "./classes/reply/NotFoundReply.js";
 import DefaultRole from "./migrations/DefaultRole.js";
+import ServerErrorReply from "./classes/reply/ServerErrorReply.js";
 
 let port = process.env.LQ_PORT || 10000;
 let dbReady = false;
