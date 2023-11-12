@@ -5,6 +5,7 @@ dotenv.config();
 import db from "./db.js";
 import fs from "fs";
 import { initialize } from 'unleash-client';
+import {kitty} from "./util/kitty.js";
 export const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
 const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const app = express();
@@ -74,6 +75,10 @@ app.use("/", home)
 
 app.get("/v*/network", (req, res) => {
     networkInformation.version = pjson.version;
+    networkInformation.capabilities = {
+        base: true, // Everything before capabilities was added
+        userStatus: unleash.isEnabled("LQ_Status", res.locals.unleashContext) // User statuses
+    }
     res.json(networkInformation);
 })
 /*
@@ -141,7 +146,7 @@ app.all("*", (req, res) => {
 app.use(Sentry.Handlers.errorHandler());
 
 // Optional fallthrough error handler
-app.use(function onError(err, req, res, next) {
+app.use((err, req, res, next) => {
     console.error(err);
     Sentry.addBreadcrumb({
         message: "Unhandled server error"
@@ -195,6 +200,7 @@ async function startServer() {
     // Run server and gateway
     const server = app.listen(port, () => {
         console.info(`App listening on ${port}`);
+        kitty()
     })
     gateway(server);
 }

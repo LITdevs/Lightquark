@@ -229,6 +229,7 @@ import P, {
 } from "../../util/PermissionMiddleware.js";
 import {networkInformation} from "../../index.js";
 import Mongoose from "mongoose";
+import path from "path";
 router.use("/:quarkId/role", roleSubAPI)
 
 /**
@@ -355,8 +356,8 @@ router.put("/:id/icon", Auth, P("EDIT_QUARK_ICON", "quark"), async (req, res) =>
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
         let formData = new FormData();
         // Write temp file
-        fs.writeFileSync(`/share/wcloud/${randomName}`, req.body);
-        formData.append("upload", fs.createReadStream(`/share/wcloud/${randomName}`));
+        fs.writeFileSync(path.resolve(`./temp/${randomName}`), req.body);
+        formData.append("upload", fs.createReadStream(path.resolve(`./temp/${randomName}`)));
         // Upload to Wanderer's Cloud
         formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
             if (err) return res.json(new ServerErrorReply());
@@ -377,7 +378,7 @@ router.put("/:id/icon", Auth, P("EDIT_QUARK_ICON", "quark"), async (req, res) =>
             response.once("end", () => {
                 if (!fileType) return;
                 // Delete temp file
-                fs.unlinkSync(`/share/wcloud/${randomName}`);
+                fs.unlinkSync(path.resolve(`./temp/${randomName}`));
             })
         })
     } catch (err) {
@@ -564,8 +565,8 @@ router.post("/:id/emotes", Auth, P("CREATE_EMOTE", "quark"), RequiredProperties(
         image.toFormat("webp", { nearLossless: true, quality: 50 });
         fileBuffer = await image.toBuffer();
 
-        fs.writeFileSync(`/share/wcloud/${emote._id}.webp`, fileBuffer);
-        formData.append(`${emote._id}.webp`, fs.createReadStream(`/share/wcloud/${emote._id}.webp`), { filename: `${emote._id}.webp` });
+        fs.writeFileSync(path.resolve(`./temp/${emote._id}.webp`), fileBuffer);
+        formData.append(`${emote._id}.webp`, fs.createReadStream(path.resolve(`./temp/${emote._id}.webp`)), { filename: `${emote._id}.webp` });
 
         formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
             if (err) return res.json(new ServerErrorReply());
@@ -581,7 +582,7 @@ router.post("/:id/emotes", Auth, P("CREATE_EMOTE", "quark"), RequiredProperties(
                 }
             })
             response.once("end", () => {
-                fs.unlinkSync(`/share/wcloud/${emote._id}.webp`);
+                fs.unlinkSync(path.resolve(`./temp/${emote._id}.webp`));
             })
         })
 

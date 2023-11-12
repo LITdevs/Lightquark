@@ -19,10 +19,15 @@ import FeatureFlag from "../../util/FeatureFlagMiddleware.js";
 import {ConstantID_SystemUser} from "../../util/ConstantID.js";
 import {networkInformation} from "../../index.js";
 import preference from "./user/preference.js";
+import status, {plainStatus} from "./user/status.js";
+import path from "path";
 
 const router = express.Router();
 
-router.get("/me", Auth, (req, res) => {
+router.get("/me", Auth, async (req, res) => {
+    let Statuses = db.getStatuses();
+    let status = await Statuses.findOne({userId: res.locals.user._id});
+    if (status) res.locals.user.status = plainStatus(status);
     res.send(new Reply(200, true, {message: "Here is the data from your JWT, it is valid", jwtData: res.locals.user}));
 });
 
@@ -109,8 +114,8 @@ router.put("/me/avatar", Auth, async (req, res) => {
     if (req.body.byteLength > 2097152) return res.json(new Reply(400, false, {message: "File size must be less than 2MiB"}));
     let formData = new FormData();
     let randomName = `${Math.floor(Math.random() * 1000000)}.${fileType.ext}`;
-    fs.writeFileSync(`/share/wcloud/${randomName}`, req.body);
-    formData.append("upload", fs.createReadStream(`/share/wcloud/${randomName}`));
+    fs.writeFileSync(path.resolve(`./temp/${randomName}`), req.body);
+    formData.append("upload", fs.createReadStream(path.resolve(`./temp/${randomName}`)));
     formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
         if (err) return res.json(new ServerErrorReply());
         response.resume()
@@ -128,7 +133,7 @@ router.put("/me/avatar", Auth, async (req, res) => {
         })
         response.once("end", () => {
             if (!fileType) return;
-            fs.unlinkSync(`/share/wcloud/${randomName}`);
+            fs.unlinkSync(path.resolve(`./temp/${randomName}`));
         })
     })
 });
@@ -154,11 +159,13 @@ router.delete("/me/avatar", Auth, async (req, res) => {
 
 router.use("/me/preferences", preference);
 
+router.use("/:id/status", status);
 /**
  * Find a user by their ID
  * @param req.params.id The ID of the user to find
  */
 router.get("/:id", Auth, async (req, res) => {
+    if (!isValidObjectId(req.params.id)) return res.reply(new InvalidReplyMessage("Invalid user"));
     let Users = db.getLoginUsers();
 
     // Return system user info, since it's not in the database
@@ -178,15 +185,19 @@ router.get("/:id", Auth, async (req, res) => {
         let user = await Users.findOne({_id: req.params.id});
         if (!user) return res.json(new Reply(404, false, {message: "User not found"}));
         let Avatars = db.getAvatars();
+        let Statuses = db.getStatuses();
         // Find the avatar of the user
-        let avatar = Avatars.findOne({userId: user._id});
+        let avatar = await Avatars.findOne({userId: user._id});
         if (!avatar) avatar = { avatarUri: `https://auth.litdevs.org/api/avatar/bg/${user._id}`};
+        // Find status of the user
+        let status = await Statuses.findOne({userId: user._id});
         let safeUser = {
             _id: user._id,
             username: await getNick(user._id),
             avatarUri: avatar.avatarUri,
             admin: !!user.admin,
-            isBot: !!user.isBot
+            isBot: !!user.isBot,
+            status: plainStatus(status)
         }
         res.json(new Reply(200, true, {message: "User found", user: safeUser}));
     } catch (err) {
