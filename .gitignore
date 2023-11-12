@@ -39,3 +39,6 @@ dist/**/*
 #network.json
 # Sentry Config File
 .sentryclirc
+
+temp/**/*
+!temp/.gitkeep

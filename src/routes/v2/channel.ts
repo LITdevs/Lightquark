@@ -21,6 +21,7 @@ import P, {
 import RequiredProperties from "../../util/RequiredProperties.js";
 import {ConstantID_SystemUser} from "../../util/ConstantID.js";
 import {networkInformation} from "../../index.js";
+import {plainStatus} from "./user/status.js";
 
 const router = express.Router();
 
@@ -338,8 +339,8 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
                 if (fileBuffer.length > 26214400) return s = true;
                 // Save temporary file to disk
                 let randomName = `${Math.floor(Math.random() * 1000000)}${path.extname(attachment.filename)}`;
-                fs.writeFileSync(`/share/wcloud/${randomName}`, fileBuffer);
-                formData.append(randomName, fs.createReadStream(`/share/wcloud/${randomName}`), { filename: attachment.filename});
+                fs.writeFileSync(path.resolve(`./temp/${randomName}`), fileBuffer);
+                formData.append(randomName, fs.createReadStream(path.resolve(`./temp/${randomName}`)), { filename: attachment.filename});
                 files.push(randomName);
             }
             if (s) return res.status(413).json(new Reply(413, false, {message: "One or more attachments are too large. Max size is 25MB", cat: "https://http.cat/413"}));
@@ -360,7 +361,7 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
                 })
                 response.once("end", () => {
                     files.forEach((file) => {
-                        fs.unlinkSync(`/share/wcloud/${file}`);
+                        fs.unlinkSync(path.resolve(`./temp/${file}`));
                     })
                 })
             })
@@ -502,14 +503,14 @@ export const getUserBulk = async (userIds, quarkId) => {
     let Avatars = db.getAvatars();
     let avatars = await Avatars.find({ userId: {$in: userIds} });
 
+    let Statuses = db.getStatuses();
+    let statuses = await Statuses.find({userId: {$in: userIds} });
 
     let nicks = await getNickBulk(userIds, quarkId);
 
-
-
-
     users.forEach((user, index) => {
         let avatar = avatars.find(a => String(a.userId) === String(user._id));
+        let status = statuses.find(a => String(a.userId) === String(user._id));
         let avatarUri = avatar ? avatar.avatarUri : null;
         if (!avatarUri) avatarUri = `https://auth.litdevs.org/api/avatar/bg/${user._id}`;
         user.avatarUri = avatarUri;
@@ -518,6 +519,7 @@ export const getUserBulk = async (userIds, quarkId) => {
             _id: user._id,
             username: nicks.find(n => String(n.userId) === String(user._id))?.nickname || user.username, // Fallback to username if nickname is not set
             avatarUri: avatarUri,
+            status: plainStatus(status) || undefined,
             admin: !!user.admin,
             isBot: !!user.isBot
         }
@@ -525,12 +527,14 @@ export const getUserBulk = async (userIds, quarkId) => {
 
     // Add system user, because it's not in the database
     if (userIds.some(user => String(user) === String(ConstantID_SystemUser))) {
+        let status = statuses.find(a => String(a.userId) === String(ConstantID_SystemUser));
         users.push({
             _id: ConstantID_SystemUser,
             username: "System",
             admin: true,
             avatarUri: `${networkInformation.baseUrl}/systemUser.webp`,
-            isBot: false
+            isBot: false,
+            status: plainStatus(status)
         })
     }
 

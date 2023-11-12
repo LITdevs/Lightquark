@@ -14,6 +14,7 @@ import roleSchema from "./schemas/roleSchema.js";
 import permissionAssignmentSchema from "./schemas/permissionAssignmentSchema.js";
 import roleAssignmentSchema from "./schemas/roleAssignmentSchema.js";
 import preferenceSchema from "./schemas/preferenceSchema.js";
+import userStatusSchema from "./schemas/userStatusSchema.js";
 
 const LOGINDB_URI : string | undefined = process.env.LOGINDB_URI
 if (typeof LOGINDB_URI === "undefined") {
@@ -27,7 +28,7 @@ if (typeof LQDB_URI === "undefined") {
 }
 
 const dbEvents = new EventEmitter();
-export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments, getRoleAssignments, getPreferences };
+export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments, getRoleAssignments, getPreferences, getStatuses };
 
 const logindb = mongoose.createConnection(LOGINDB_URI)
 
@@ -50,6 +51,7 @@ let Roles
 let PermissionAssignments
 let RoleAssignments
 let Preferences
+let Statuses
 lqdb.once("open", () => {
     Avatars = lqdb.model('avatar', userAvatarSchema);
     Quarks = lqdb.model('quark', quarkSchema);
@@ -62,6 +64,7 @@ lqdb.once("open", () => {
     PermissionAssignments = lqdb.model('permissionAssignments', permissionAssignmentSchema, 'permissionAssignments');
     RoleAssignments = lqdb.model('roleAssignments', roleAssignmentSchema, 'roleAssignments');
     Preferences = lqdb.model('preferences', preferenceSchema, 'preferences');
+    Statuses = lqdb.model('statuses', userStatusSchema, 'statuses');
     dbEvents.emit("lq_ready");
 })
 
@@ -111,4 +114,8 @@ function getRoleAssignments() {
 
 function getPreferences() {
     return Preferences;
+}
+
+function getStatuses() {
+    return Statuses;
 }
