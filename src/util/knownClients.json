@@ -1,12 +1,16 @@
 {
 	"knownClients": [
 		{
-			"name": "Quarky",
-			"capabilityUrl": "https://raw.githubusercontent.com/Vukkysoft/Quarky/main/public/capabilities.json"
+			"name": "Quarky-Classic",
+			"capabilityUrl": "https://raw.githubusercontent.com/meower-holdings/quarky-classic/main/public/capabilities.json"
 		},
 		{
 			"name": "Quarklight",
-			"capabilityUrl": "https://raw.githubusercontent.com/vtheskeleton/quarklight/prod/capabilities.json"
+			"capabilityUrl": "https://raw.githubusercontent.com/emilianya/quarklight/prod/capabilities.json"
+		},
+		{
+			"name": "Quarkvite",
+			"capabilityUrl": "https://raw.githubusercontent.com/emilianya/quarkvite/main/public/capabilities.json"
 		},
 		{
 			"name": "Pisscord",
