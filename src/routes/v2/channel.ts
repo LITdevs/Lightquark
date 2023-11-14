@@ -311,7 +311,8 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
                 _id: res.locals.user._id,
                 username: await getNick(res.locals.user._id, quark._id),
                 avatarUri: res.locals.user.avatar,
-                admin: !!res.locals.user.admin
+                admin: !!res.locals.user.admin,
+                isBot: !!res.locals.user.isBot
             }
             let data = {
                 eventId: "messageCreate",
