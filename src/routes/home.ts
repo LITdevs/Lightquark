@@ -86,7 +86,7 @@ const knownClients = JSON.parse(fs.readFileSync("src/util/knownClients.json").to
 import CapabilityParser from "../util/CapabilityParser.js";
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
 import db from "../db.js";
-import {networkInformation} from "../index.js";
+import {networkInformation, pjson, unleash} from "../index.js";
 
 router.get("/features/:clientName", async (req, res) => {
 	try {
@@ -144,6 +144,15 @@ router.get("/v*/stats", (req, res ) => {
 			latestMessage
 		})
 	})
+})
+
+router.get("/v*/network", (req, res) => {
+	networkInformation.version = pjson.version;
+	networkInformation.capabilities = {
+	    base: true, // Everything before capabilities was added
+	    userStatus: unleash.isEnabled("LQ_Status", res.locals.unleashContext) // User statuses
+	}
+	res.json(networkInformation);
 })
 
 export default router;

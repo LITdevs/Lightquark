@@ -80,7 +80,6 @@ router.delete("/:id", Auth, P("DELETE_CHANNEL", "channel"), async (req, res) => 
 /**
  * Edit a channel by id
  */
-// TODO: Allow roles to edit channels
 router.patch("/:id", Auth, async (req, res) => {
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
@@ -312,7 +311,8 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
                 _id: res.locals.user._id,
                 username: await getNick(res.locals.user._id, quark._id),
                 avatarUri: res.locals.user.avatar,
-                admin: !!res.locals.user.admin
+                admin: !!res.locals.user.admin,
+                isBot: !!res.locals.user.isBot
             }
             let data = {
                 eventId: "messageCreate",
