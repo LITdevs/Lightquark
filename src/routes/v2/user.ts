@@ -116,7 +116,7 @@ router.put("/me/avatar", Auth, async (req, res) => {
     let randomName = `${Math.floor(Math.random() * 1000000)}.${fileType.ext}`;
     fs.writeFileSync(path.resolve(`./temp/${randomName}`), req.body);
     formData.append("upload", fs.createReadStream(path.resolve(`./temp/${randomName}`)));
-    formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
+    formData.submit({protocol: "https:", host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
         if (err) return res.json(new ServerErrorReply());
         response.resume()
         response.once("data", async (data) => {
