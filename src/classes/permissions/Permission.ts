@@ -12,6 +12,7 @@ export default class Permission extends BasePermission {
 
     grants(permission : PermissionType) {
         // TODO: Hierarchy and stuff :(
+        // Hello from 6 months later, what does this mean?
         if (this.type === permission) return true;
         return this.children.some(child => child.grants(permission));
     }

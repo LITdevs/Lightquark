@@ -359,7 +359,7 @@ router.put("/:id/icon", Auth, P("EDIT_QUARK_ICON", "quark"), async (req, res) =>
         fs.writeFileSync(path.resolve(`./temp/${randomName}`), req.body);
         formData.append("upload", fs.createReadStream(path.resolve(`./temp/${randomName}`)));
         // Upload to Wanderer's Cloud
-        formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
+        formData.submit({protocol: "https:", host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
             if (err) return res.json(new ServerErrorReply());
             response.resume()
             response.once("data", async (data) => {
@@ -374,6 +374,10 @@ router.put("/:id/icon", Auth, P("EDIT_QUARK_ICON", "quark"), async (req, res) =>
                     quark: quark
                 }
                 subscriptionListener.emit("event", `quark_${quark._id}` , eventData);
+            })
+            response.once("error", (e) => {
+                console.error(e);
+                res.reply(new ServerErrorReply())
             })
             response.once("end", () => {
                 if (!fileType) return;
@@ -568,7 +572,7 @@ router.post("/:id/emotes", Auth, P("CREATE_EMOTE", "quark"), RequiredProperties(
         fs.writeFileSync(path.resolve(`./temp/${emote._id}.webp`), fileBuffer);
         formData.append(`${emote._id}.webp`, fs.createReadStream(path.resolve(`./temp/${emote._id}.webp`)), { filename: `${emote._id}.webp` });
 
-        formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
+        formData.submit({protocol: "https:", host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
             if (err) return res.json(new ServerErrorReply());
             response.resume()
             response.once("data", async (data) => {

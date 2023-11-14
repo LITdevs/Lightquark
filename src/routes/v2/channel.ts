@@ -346,7 +346,7 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
             if (s) return res.status(413).json(new Reply(413, false, {message: "One or more attachments are too large. Max size is 25MB", cat: "https://http.cat/413"}));
             if (m) return res.status(400).json(new InvalidReplyMessage("One or more attachments are malformed. Make sure you provide the filename and data properties in each object"));
             // Actually upload files
-            formData.submit({host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
+            formData.submit({protocol: "https:", host: "upload.wanderers.cloud", headers: {authentication: process.env.WC_TOKEN}}, (err, response) => {
                 if (err) return res.json(new ServerErrorReply());
                 response.resume()
                 response.once("data", (data) => {
