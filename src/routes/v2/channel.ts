@@ -80,7 +80,6 @@ router.delete("/:id", Auth, P("DELETE_CHANNEL", "channel"), async (req, res) => 
 /**
  * Edit a channel by id
  */
-// TODO: Allow roles to edit channels
 router.patch("/:id", Auth, async (req, res) => {
     if (!req.params.id) return res.status(400).json(new InvalidReplyMessage("Provide a channel id"));
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json(new InvalidReplyMessage("Invalid channel id"));
