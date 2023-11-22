@@ -45,7 +45,7 @@ app.use(express.raw({type: 'image/*', limit: '10mb'}));
 // Allow CORS usage
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "*");
+    res.header("Access-Control-Allow-Headers", "*,Authorization");
     res.header("Access-Control-Allow-Methods", "*");
 
     // Define reply method, to set status code accordingly
