@@ -37,7 +37,7 @@ router.get("/me", Auth, async (req, res) => {
             members: [res.locals.user._id],
             invite: "direct messages", // Impossible invite
             owners: [ ConstantID_SystemUser ],
-            channels: [] // TODO: #LIGHTQUARK-1
+            channels: []
         })
 
         let Channels = db.getChannels();
@@ -279,7 +279,7 @@ router.get("/:id", Auth, async (req, res) => {
                 members: [res.locals.user._id],
                 invite: "direct messages", // Impossible invite
                 owners: [ ConstantID_SystemUser ],
-                channels: [] // TODO: #LIGHTQUARK-1
+                channels: []
             }
         }
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));

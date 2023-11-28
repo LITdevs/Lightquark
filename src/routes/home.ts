@@ -70,7 +70,7 @@ router.get("/v1/ping", (req, res ) => {
 
 router.get("/d/:linkType/*", (req, res) => {
 	req.params.relevantIds = req.originalUrl.split(`/d/${req.params.linkType}`)[1]
-	console.log(req.params.relevantIds)
+	//console.log(req.params.relevantIds)
 	let lqLink = `web+lq://${networkInformation.linkBase}:${req.params.linkType}:${req.params.relevantIds}`
 	res.redirect(lqLink)
 	// TODO: Show a page explaining what LQ is and redirect with JS

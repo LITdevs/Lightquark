@@ -59,7 +59,7 @@ router.delete("/:id", Auth, P("DELETE_CHANNEL", "channel"), async (req, res) => 
                 members: [res.locals.user._id],
                 invite: "direct messages", // Impossible invite
                 owners: [ ConstantID_SystemUser ],
-                channels: [channel._id] // TODO: #LIGHTQUARK-1
+                channels: [channel._id]
             }
         }
         if (!quark) return res.reply(new NotFoundReply("Quark not found"));
@@ -107,7 +107,7 @@ router.patch("/:id", Auth, async (req, res) => {
                 members: [res.locals.user._id],
                 invite: "direct messages", // Impossible invite
                 owners: [ ConstantID_SystemUser ],
-                channels: [channel._id] // TODO: #LIGHTQUARK-1
+                channels: [channel._id]
             }
         }
 
@@ -191,7 +191,7 @@ router.post("/create", Auth, async (req, res) => {
             }
             subscriptionListener.emit("event", `quark_${channel.quark}` , data);
         } else {
-            // TODO: Privacy system (dont let anyone dm you)
+            // TODO: Privacy system (dont let everyone dm you)
             let users = await getUserBulk(req.body.members, ConstantID_DMvQuark)
             /*
             The way im doing it is a bit hacky, but here goes:
@@ -569,7 +569,7 @@ router.patch("/:id/messages/:messageId", Auth, P("WRITE_MESSAGE", "channel"), Re
                 members: [res.locals.user._id],
                 invite: "direct messages", // Impossible invite
                 owners: [ ConstantID_SystemUser ],
-                channels: [dmChannel._id] // TODO: #LIGHTQUARK-1
+                channels: [dmChannel._id]
             }
         }
 
