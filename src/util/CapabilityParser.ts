@@ -26,7 +26,7 @@ export default async function parse(url : string) {
 
     if (capability?.features?.full && typeof capability.features.full === "object") {
         // Is array?
-        console.log("Checking full features")
+        //console.log("Checking full features")
         if (!Array.isArray(capability.features.full)) throw new Error("Malformed capability manifest");
         capability.features.full.forEach(feature => {
             if (typeof feature === "string") allOfficialFeatures.push(feature);
@@ -85,5 +85,5 @@ export default async function parse(url : string) {
 
 (async () => {
     let client = await lookupCapability("https://raw.githubusercontent.com/vtheskeleton/quarklight/prod/capabilities.json");
-    console.log(client);
+    //console.log(client);
 })
