@@ -19,7 +19,7 @@ import P, {
     checkPermittedQuarkResponse
 } from "../../util/PermissionMiddleware.js";
 import RequiredProperties from "../../util/RequiredProperties.js";
-import {ConstantID_SystemUser} from "../../util/ConstantID.js";
+import {ConstantID_DMvQuark, ConstantID_SystemUser} from "../../util/ConstantID.js";
 import {networkInformation} from "../../index.js";
 import {plainStatus} from "./user/status.js";
 
@@ -52,6 +52,16 @@ router.delete("/:id", Auth, P("DELETE_CHANNEL", "channel"), async (req, res) => 
         if (!channel) return res.reply(new NotFoundReply("Channel not found"));
         let Quarks = db.getQuarks();
         let quark = await Quarks.findOne({ _id: channel.quark, channels: channel._id});
+        if (ConstantID_DMvQuark.equals(channel.quark)) {
+            quark = {
+                name: "Direct Messages",
+                _id: ConstantID_DMvQuark,
+                members: [res.locals.user._id],
+                invite: "direct messages", // Impossible invite
+                owners: [ ConstantID_SystemUser ],
+                channels: [channel._id] // TODO: #LIGHTQUARK-1
+            }
+        }
         if (!quark) return res.reply(new NotFoundReply("Quark not found"));
         // Remove channel from quark
         // TODO: Stop doing this, #LIGHTQUARK-45
@@ -90,6 +100,16 @@ router.patch("/:id", Auth, async (req, res) => {
         if (!channel) return res.status(404).json(new NotFoundReply("Channel not found"));
         let Quarks = db.getQuarks();
         let quark = await Quarks.findOne({ _id: channel.quark, channels: channel._id });
+        if (ConstantID_DMvQuark.equals(channel.quark)) {
+            quark = {
+                name: "Direct Messages",
+                _id: ConstantID_DMvQuark,
+                members: [res.locals.user._id],
+                invite: "direct messages", // Impossible invite
+                owners: [ ConstantID_SystemUser ],
+                channels: [channel._id] // TODO: #LIGHTQUARK-1
+            }
+        }
 
         // Update name
         if (req.body.name && !(await checkPermittedChannelResponse("EDIT_CHANNEL_NAME", channel._id, res.locals.user._id, res, quark._id))) {
@@ -127,14 +147,29 @@ router.patch("/:id", Auth, async (req, res) => {
  */
 router.post("/create", Auth, async (req, res) => {
     if (!req.body.quark) return res.status(400).json(new InvalidReplyMessage("Provide a quark id"));
+    if (req.body.quark === "dm") req.body.quark = ConstantID_DMvQuark;
     if (!mongoose.isValidObjectId(req.body.quark)) return res.status(400).json(new InvalidReplyMessage("Invalid quark id"));
     if (!req.body.name) return res.status(400).json(new InvalidReplyMessage("Provide a channel name"));
     if (req.body.name.trim().length > 64) return res.status(400).json(new Reply(400, false, {message: "Name must be less than 64 characters"}));
+    const isDM = ConstantID_DMvQuark.equals(req.body.quark);
+    if (isDM && (!req.body.members || !Array.isArray(req.body.members))) return res.reply(new InvalidReplyMessage("Invalid list of DM members"))
+    if (isDM && !req.body.members.includes(String(res.locals.user._id))) req.body.members.push(res.locals.user._id);
+    if (isDM) {
+        const invalid = req.body.members.some(member => typeof member !== "string" || !isValidObjectId(member))
+        if (invalid) return res.reply(new InvalidReplyMessage("Invalid list of DM members"));
+    }
     let Quarks = db.getQuarks();
     try {
-        let quark = await Quarks.findOne({ _id: req.body.quark });
+        let quark = !isDM ? await Quarks.findOne({ _id: req.body.quark }) : {
+            name: "Direct Messages",
+            _id: ConstantID_DMvQuark,
+            members: [res.locals.user._id],
+            invite: "direct messages", // Impossible invite
+            owners: [ ConstantID_SystemUser ],
+            channels: []
+        };
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
-        let check = await checkPermittedQuarkResponse(["CREATE_CHANNEL"], quark._id, res.locals.user._id, res);
+        let check = isDM || await checkPermittedQuarkResponse(["CREATE_CHANNEL"], quark._id, res.locals.user._id, res);
         if (!check) return;
         let Channel = db.getChannels();
         let channel = new Channel({
@@ -143,17 +178,80 @@ router.post("/create", Auth, async (req, res) => {
             description: req.body.description ? String(req.body.description).trim() : "",
             quark: quark._id
         });
-        await channel.save();
-        quark.channels.push(channel._id);
-        await quark.save();
-        res.json(new Reply(200, true, {message: "Channel created", channel}));
-        // Send create event
-        let data = {
-            eventId: "channelCreate",
-            channel: channel,
-            quark: quark
+        if (!isDM) {
+            await channel.save();
+            quark.channels.push(channel._id);
+            await quark.save();
+            res.json(new Reply(200, true, {message: "Channel created", channel}));
+            // Send create event
+            let data = {
+                eventId: "channelCreate",
+                channel: channel,
+                quark: quark
+            }
+            subscriptionListener.emit("event", `quark_${channel.quark}` , data);
+        } else {
+            // TODO: Privacy system (dont let anyone dm you)
+            let users = await getUserBulk(req.body.members, ConstantID_DMvQuark)
+            /*
+            The way im doing it is a bit hacky, but here goes:
+            dm quark is a fictional concept, it has the id of 0 and is handled by the endpoints rather than being in the db (why??)
+            Dm quark has permissions set up to deny anyone from viewing channels
+
+            To make a dm/group:
+            1. Create channel with quark set to the dm quark id (0)
+            2. Create a new role for that channel (yes every dm gets a role, yikes)
+            3. Create permission assignment for EDIT_CHANNEL permission for that role
+            4. Create role assignments for each dm member for that role in dm quark
+            5. Win
+             */
+            // 1.
+            await channel.save();
+            // 2.
+            let Role = db.getRoles()
+            let dmRole = new Role({
+                _id: new mongoose.Types.ObjectId(),
+                name: channel._id.toString(),
+                description: "DM Channel permissions",
+                createdBy: ConstantID_SystemUser,
+                priority: 1,
+                isDefault: false
+            })
+            await dmRole.save();
+            // 3.
+            let PermissionAssignment = db.getPermissionAssignments();
+            let dmPerm = new PermissionAssignment({
+                _id: new mongoose.Types.ObjectId(),
+                role: dmRole._id,
+                permission: "EDIT_CHANNEL", // Grants read and allows changing description and name
+                type: "allow",
+                scopeType: "channel",
+                scopeId: channel._id // Scope this permission to the newly created dm channel
+            })
+            await dmPerm.save()
+            // 4.
+            let RoleAssignment = db.getRoleAssignments();
+            for (const user of users) {
+                let roleAssignment = new RoleAssignment({
+                    _id: new mongoose.Types.ObjectId(),
+                    role: dmRole._id,
+                    user: user._id,
+                    quark: ConstantID_DMvQuark
+                })
+                await roleAssignment.save();
+            }
+
+            // 5.
+            // Win
+            res.json(new Reply(200, true, {message: "Channel created", channel}));
+            // Send create event
+            let data = {
+                eventId: "channelCreate",
+                channel: channel,
+                quark: quark
+            }
+            subscriptionListener.emit("event", `quark_${channel.quark}` , data);
         }
-        subscriptionListener.emit("event", `quark_${channel.quark}` , data);
     } catch (err) {
         console.error(err);
         return res.status(500).json(new ServerErrorReply());
@@ -309,7 +407,7 @@ router.post("/:id/messages", Auth, P("WRITE_MESSAGE", "channel"), RequiredProper
             // Send create event
             let author = {
                 _id: res.locals.user._id,
-                username: await getNick(res.locals.user._id, quark._id),
+                username: await getNick(res.locals.user._id, quark?._id),
                 avatarUri: res.locals.user.avatar,
                 admin: !!res.locals.user.admin,
                 isBot: !!res.locals.user.isBot
@@ -461,6 +559,19 @@ router.patch("/:id/messages/:messageId", Auth, P("WRITE_MESSAGE", "channel"), Re
         await message.save();
         let Quark = db.getQuarks();
         let quark = await Quark.findOne({ channels: new mongoose.Types.ObjectId(req.params.id) });
+        if (!quark) {
+            let Channels = db.getChannels()
+            let dmChannel = await Channels.findOne({quark: ConstantID_DMvQuark, _id: req.params.id})
+            if (!dmChannel) return res.reply(new NotFoundReply())
+            quark = {
+                name: "Direct Messages",
+                _id: ConstantID_DMvQuark,
+                members: [res.locals.user._id],
+                invite: "direct messages", // Impossible invite
+                owners: [ ConstantID_SystemUser ],
+                channels: [dmChannel._id] // TODO: #LIGHTQUARK-1
+            }
+        }
 
         let user = await getUser(message.authorId, quark._id)
 

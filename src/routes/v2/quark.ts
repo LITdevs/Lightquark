@@ -15,6 +15,10 @@ import {subscriptionListener} from "../v1/gateway.js";
 import RequiredProperties from "../../util/RequiredProperties.js";
 import sharp from "sharp";
 import {ConstantID_DMvQuark, ConstantID_SystemUser} from "../../util/ConstantID.js";
+import roleSubAPI from "./quark/role.js";
+import P, {checkPermittedChannel, checkPermittedQuarkResponse} from "../../util/PermissionMiddleware.js";
+import {networkInformation} from "../../index.js";
+import path from "path";
 
 const router = express.Router();
 
@@ -26,9 +30,21 @@ router.get("/me", Auth, async (req, res) => {
     let Quarks = db.getQuarks();
     try {
         let quarks = await Quarks.find({ members: res.locals.user._id});
+
+        quarks.push({
+            name: "Direct Messages",
+            _id: ConstantID_DMvQuark,
+            members: [res.locals.user._id],
+            invite: "direct messages", // Impossible invite
+            owners: [ ConstantID_SystemUser ],
+            channels: [] // TODO: #LIGHTQUARK-1
+        })
+
         let Channels = db.getChannels();
+        // TODO: Why exactly does quarkChannels even exist if we get all channels linked to the quark anyway?
         const resolveChannels = async (quarkChannels, quarkId) => {
             let channels = await Channels.find({ quark: quarkId })
+            if (quarkId === ConstantID_DMvQuark) quarkChannels = channels.map(channel => channel._id);
             let newChannels = await Promise.all(quarkChannels.map(async (channel) => {
                 let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
                 if (foundChannel) channel = foundChannel;
@@ -42,19 +58,9 @@ router.get("/me", Auth, async (req, res) => {
         }
 
         quarks = await Promise.all(quarks.map(async (quark) => {
-            let inflatedChannels = await resolveChannels(quark.channels, quark._id);
-            quark.channels = inflatedChannels;
+            quark.channels = await resolveChannels(quark.channels, quark._id);
             return quark;
         }))
-
-        quarks.push({
-            name: "Direct Messages",
-            _id: ConstantID_DMvQuark,
-            members: [res.locals.user._id],
-            invite: "direct messages", // Impossible invite
-            owners: [ ConstantID_SystemUser ],
-            channels: [] // TODO: #LIGHTQUARK-1
-        })
 
         res.json(new Reply(200, true, {message: "Here are the quarks you are a member of", quarks}));
     } catch (err) {
@@ -68,6 +74,7 @@ router.get("/me", Auth, async (req, res) => {
  * Change quark order
  * FIXME: This hurts my brain
  * @param {string[]} order - The new order of the quarks
+ * @DEPRECATED
  */
 router.put("/order", Auth, async (req, res) => {
     try {
@@ -105,6 +112,7 @@ router.put("/order", Auth, async (req, res) => {
 /**
  * Get quark order
  * FIXME: This hurts my brain
+ * @DEPRECATED
  */
 router.get("/order", Auth, async (req, res) => {
     try {
@@ -140,7 +148,8 @@ router.get("/order", Auth, async (req, res) => {
 
         }
 
-        res.json(new Reply(200, true, {order: order.order}));
+
+        res.json(new Reply(200, true, {order: [ConstantID_DMvQuark, ...order.order]}));
     } catch (e) {
         console.error(e);
         return res.status(500).json(new ServerErrorReply());
@@ -221,15 +230,6 @@ router.post("/:id/leave", Auth, async (req, res) => {
     }
 })
 
-import roleSubAPI from "./quark/role.js";
-import P, {
-    checkPermittedChannel,
-    checkPermittedChannelResponse,
-    checkPermittedQuarkResponse
-} from "../../util/PermissionMiddleware.js";
-import {networkInformation} from "../../index.js";
-import Mongoose from "mongoose";
-import path from "path";
 router.use("/:quarkId/role", roleSubAPI)
 
 /**
@@ -272,9 +272,20 @@ router.get("/:id", Auth, async (req, res) => {
     let Quarks = db.getQuarks();
     try {
         let quark = await Quarks.findOne({ _id: req.params.id });
+        if (req.params.id === "dm" || ConstantID_DMvQuark.equals(req.params.id)) {
+            quark = {
+                name: "Direct Messages",
+                _id: ConstantID_DMvQuark,
+                members: [res.locals.user._id],
+                invite: "direct messages", // Impossible invite
+                owners: [ ConstantID_SystemUser ],
+                channels: [] // TODO: #LIGHTQUARK-1
+            }
+        }
         if (!quark) return res.status(404).json(new NotFoundReply("Quark not found"));
         let Channels = db.getChannels();
         let channels = await Channels.find({ quark: quark._id });
+        if (quark._id.equals(ConstantID_DMvQuark)) quark.channels = channels.map(c => c._id);
         quark.channels = await Promise.all(quark.channels.map(async (channel) => {
             let foundChannel = channels.find((c) => c._id.toString() === channel.toString());
             if (foundChannel) channel = foundChannel;

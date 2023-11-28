@@ -2,7 +2,7 @@ import Permission from "./Permission.js";
 import db from "../../db.js";
 import {isValidObjectId, Types} from "mongoose";
 import {
-    ConstantID_DenyAssignment, ConstantID_DenyRole,
+    ConstantID_DenyAssignment, ConstantID_DenyRole, ConstantID_DMvQuark,
     ConstantID_OwnerAssignment,
     ConstantID_OwnerRole,
     ConstantID_SystemUser
@@ -47,7 +47,6 @@ export default class PermissionManager {
         r("EDIT_EMOTE", "deny", "Edit emotes", [], ["quark"]);
         r("DELETE_EMOTE", "deny", "Remove emotes", [], ["quark"]);
         r("MANAGE_EMOTE", "deny", "All emote permissions", ["CREATE_EMOTE", "EDIT_EMOTE", "DELETE_EMOTE"], ["quark"]);
-
 
         r("EDIT_QUARK_ICON", "deny", "Change quark icon", [], ["quark"]);
         r("EDIT_QUARK_NAME", "deny", "Change quark name", [], ["quark"]);
@@ -161,13 +160,29 @@ export default class PermissionManager {
         let quark
         if (scope.scopeType === "channel" && !scope.quarkId) {
             quark = await Quarks.findOne({channels: new Types.ObjectId(scope.scopeId)});
-            if (!quark) throw new Error(`PM: Channel ${scope.scopeId} does not exist.`);
-            quarkId = quark._id;
+            if (!quark) {
+                let Channels = db.getChannels()
+                let dmChannel = await Channels.findOne({quark: ConstantID_DMvQuark, _id: scope.scopeId})
+                if (!dmChannel) throw new Error(`PM: Channel ${scope.scopeId} does not exist.`);
+                quarkId = ConstantID_DMvQuark;
+            } else {
+                quarkId = quark._id;
+            }
         } else if (scope.scopeType === "channel") {
             quarkId = scope.quarkId;
         }
         if (!quark) {
             quark = await Quarks.findOne({_id: quarkId});
+            if (ConstantID_DMvQuark.equals(quarkId)) {
+                quark = {
+                    name: "Direct Messages",
+                    _id: ConstantID_DMvQuark,
+                    members: [userId],
+                    invite: "direct messages", // Impossible invite
+                    owners: [ ConstantID_SystemUser ],
+                    channels: [scopeId]
+                }
+            }
         }
         if (!quark) throw new Error(`PM: Quark ${scope.quarkId} does not exist.`);
         if (scope.scopeType === "channel" && !quark.channels.includes(scope.scopeId)) throw new Error(`PM: Channel ${scope.scopeId} is not in provided quark ${scope.quarkId}`)

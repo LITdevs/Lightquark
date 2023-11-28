@@ -5,6 +5,7 @@ import SubscriptionManager from "../../classes/SubscriptionManager.js";
 import EventEmitter from "events";
 import db from "../../db.js";
 import {checkPermittedChannel} from "../../util/PermissionMiddleware.js";
+import {ConstantID_DMvQuark, ConstantID_SystemUser} from "../../util/ConstantID.js";
 
 // Create a new Subscription Manager and export it
 const sm = new SubscriptionManager();
@@ -117,6 +118,16 @@ async function handleMessage(message, ws, user, socketId) {
                 let Quarks = db.getQuarks();
                 try {
                     let quark = await Quarks.findOne({_id: event.split("_")[1], members: user._id});
+                    if (ConstantID_DMvQuark.equals(event.split("_")[1]) || event.split("_")[1] === "dm") {
+                        quark = {
+                            name: "Direct Messages",
+                            _id: ConstantID_DMvQuark,
+                            members: [user._id],
+                            invite: "direct messages", // Impossible invite
+                            owners: [ ConstantID_SystemUser ],
+                            channels: []
+                        }
+                    }
                     if (!quark) return ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403, event}));
                     const sub = (data) => {
                         ws.send(JSON.stringify(data));
