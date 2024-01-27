@@ -15,6 +15,8 @@ import permissionAssignmentSchema from "./schemas/permissionAssignmentSchema.js"
 import roleAssignmentSchema from "./schemas/roleAssignmentSchema.js";
 import preferenceSchema from "./schemas/preferenceSchema.js";
 import userStatusSchema from "./schemas/userStatusSchema.js";
+import friendRequestSchema from "./schemas/friendRequestSchema.js";
+import friendSchema from "./schemas/friendSchema.js";
 
 const LOGINDB_URI : string | undefined = process.env.LOGINDB_URI
 if (typeof LOGINDB_URI === "undefined") {
@@ -28,7 +30,7 @@ if (typeof LQDB_URI === "undefined") {
 }
 
 const dbEvents = new EventEmitter();
-export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments, getRoleAssignments, getPreferences, getStatuses };
+export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments, getRoleAssignments, getPreferences, getStatuses, getFriendRequests, getFriends };
 
 const logindb = mongoose.createConnection(LOGINDB_URI)
 
@@ -52,6 +54,8 @@ let PermissionAssignments
 let RoleAssignments
 let Preferences
 let Statuses
+let FriendRequests
+let Friends
 lqdb.once("open", () => {
     Avatars = lqdb.model('avatar', userAvatarSchema);
     Quarks = lqdb.model('quark', quarkSchema);
@@ -65,6 +69,8 @@ lqdb.once("open", () => {
     RoleAssignments = lqdb.model('roleAssignments', roleAssignmentSchema, 'roleAssignments');
     Preferences = lqdb.model('preferences', preferenceSchema, 'preferences');
     Statuses = lqdb.model('statuses', userStatusSchema, 'statuses');
+    FriendRequests = lqdb.model('friendRequests', friendRequestSchema, 'friendRequests');
+    Friends = lqdb.model('friends', friendSchema, 'friends');
     dbEvents.emit("lq_ready");
 })
 
@@ -118,4 +124,18 @@ function getPreferences() {
 
 function getStatuses() {
     return Statuses;
+}
+
+/**
+ * Warning: this function does not make people want to be your friend
+ */
+function getFriendRequests() {
+    return FriendRequests
+}
+
+/**
+ * Warning: this function does not give you friends
+ */
+function getFriends() {
+    return Friends
 }

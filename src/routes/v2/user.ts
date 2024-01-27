@@ -20,6 +20,7 @@ import {ConstantID_SystemUser} from "../../util/ConstantID.js";
 import {networkInformation} from "../../index.js";
 import preference from "./user/preference.js";
 import status, {plainStatus} from "./user/status.js";
+import friends from "./user/friends.js";
 import path from "path";
 
 const router = express.Router();
@@ -158,6 +159,8 @@ router.delete("/me/avatar", Auth, async (req, res) => {
 })
 
 router.use("/me/preferences", preference);
+
+router.use("/friends", friends)
 
 router.use("/:id/status", status);
 /**
