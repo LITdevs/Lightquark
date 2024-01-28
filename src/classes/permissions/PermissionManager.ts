@@ -1,5 +1,6 @@
 import Permission from "./Permission.js";
-import db from "../../db.js";
+import Database from "../../db.js";
+const database = new Database()
 import {isValidObjectId, Types} from "mongoose";
 import {
     ConstantID_DenyAssignment, ConstantID_DenyRole, ConstantID_DMvQuark,
@@ -154,14 +155,14 @@ export default class PermissionManager {
         if (scope?.quarkId && !isValidObjectId(scope.quarkId)) throw new Error(`PM: Invalid quark ID ${scope.quarkId}`);
 
         // If scope is a channel, and no quark id was provided, get the quark id from the channel
-        let Quarks = db.getQuarks();
+        let Quarks = database.Quarks;
         let scopeId = scope.scopeId;
         let quarkId = scope.scopeId;
         let quark
         if (scope.scopeType === "channel" && !scope.quarkId) {
             quark = await Quarks.findOne({channels: new Types.ObjectId(scope.scopeId)});
             if (!quark) {
-                let Channels = db.getChannels()
+                let Channels = database.Channels
                 let dmChannel = await Channels.findOne({quark: ConstantID_DMvQuark, _id: scope.scopeId})
                 if (!dmChannel) throw new Error(`PM: Channel ${scope.scopeId} does not exist.`);
                 quarkId = ConstantID_DMvQuark;
@@ -224,10 +225,10 @@ export default class PermissionManager {
         }
 
         // Find all permission assignments that affect the user in this scope, both channel and quark level
-        let PermissionAssignments = db.getPermissionAssignments();
-        let RoleAssignments = db.getRoleAssignments();
+        let PermissionAssignments = database.PermissionAssignments;
+        let RoleAssignments = database.RoleAssignments;
         let userRoles = await RoleAssignments.find({ user: userId, quark: quarkId }).distinct("role");
-        let Roles = db.getRoles();
+        let Roles = database.Roles;
         let defaultRoles =  await Roles.find({ isDefault: true, quark: quarkId }).distinct("_id");
         const permissionAssignments = await PermissionAssignments.find({
             $or: [

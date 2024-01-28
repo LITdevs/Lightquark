@@ -1,11 +1,12 @@
 import { WebSocketServer } from "ws";
-import { WsAuth } from "./auth.js";
+import {WsAuth} from "../../util/Auth.js";
 import crypto from "crypto";
 import SubscriptionManager from "../../classes/SubscriptionManager.js";
 import EventEmitter from "events";
-import db from "../../db.js";
+const database = new Database()
 import {checkPermittedChannel} from "../../util/PermissionMiddleware.js";
 import {ConstantID_DMvQuark, ConstantID_SystemUser} from "../../util/ConstantID.js";
+import Database from "../../db.js";
 
 // Create a new Subscription Manager and export it
 const sm = new SubscriptionManager();
@@ -115,7 +116,7 @@ async function handleMessage(message, ws, user, socketId) {
                     ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403, event}));
                 }
             } else if (event.split("_")[0] === "quark") {
-                let Quarks = db.getQuarks();
+                let Quarks = database.Quarks;
                 try {
                     let quark = await Quarks.findOne({_id: event.split("_")[1], members: user._id});
                     if (ConstantID_DMvQuark.equals(event.split("_")[1]) || event.split("_")[1] === "dm") {

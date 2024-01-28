@@ -1,4 +1,5 @@
-import db from "../db.js";
+import Database from "../db.js";
+const db = new Database()
 
 /**
  * Get a user's nickname
@@ -7,13 +8,13 @@ import db from "../db.js";
  * @returns {Promise<string>} Nickname
  */
 export async function getNick(userId, quarkId = null) {
-    let Nick = db.getNicks();
+    let Nick = db.Nicks;
     let nicks = await Nick.find({userId: userId});
 
     // Find global nick if present, or fallback to username
     let globalNick = nicks.find((nick) => nick.scope === "global");
     if (!globalNick) {
-        let LoginUser = db.getLoginUsers();
+        let LoginUser = db.LoginUsers;
         let user = await LoginUser.findOne({_id: userId})
         globalNick = {nickname: user.username}
     }
@@ -27,7 +28,7 @@ export async function getNick(userId, quarkId = null) {
 
 export async function getNickBulk(userIds, quarkId = null) {
     //console.time("getNickBulk");
-    let Nick = db.getNicks();
+    let Nick = db.Nicks;
     let nicks = await Nick.find({userId: {$in: userIds}});
 
     let nicknames = userIds.map(userId => {
