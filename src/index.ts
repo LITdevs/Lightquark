@@ -69,6 +69,8 @@ app.use("/v2/auth", authv2);
 app.use("/v2/user", userv2);
 app.use("/v2/quark", quarkv2);
 app.use("/v2/channel", channelv2);
+import userv3 from './routes/v3/user.js';
+app.use("/v3/user", userv3);
 
 import home from './routes/home.js';
 app.use("/", home)

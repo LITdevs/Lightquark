@@ -28,7 +28,7 @@ jobs:
       - run: pm2 deploy yggdrasil.config.cjs production
         env:
           TARGET_BRANCH: "origin/dev"
-          TARGET_HOST: "ember-twin.yggdrasil.cat"
+          TARGET_HOST: "ember-twin-v3.yggdrasil.cat"
         if: github.ref_name == 'dev'
       - run: pm2 deploy yggdrasil.config.cjs production
         env:
