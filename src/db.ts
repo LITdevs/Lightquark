@@ -18,11 +18,6 @@ import userStatusSchema from "./schemas/userStatusSchema.js";
 import friendRequestSchema from "./schemas/friendRequestSchema.js";
 import friendSchema from "./schemas/friendSchema.js";
 
-const LOGINDB_URI : string | undefined = process.env.LOGINDB_URI
-if (typeof LOGINDB_URI === "undefined") {
-    console.error("\nNo login database uri specified, Exiting...");
-    process.exit(2);
-}
 const LQDB_URI : string | undefined = process.env.LQDB_URI
 if (typeof LQDB_URI === "undefined") {
     console.error("\nNo lightquark database uri specified, Exiting...");
