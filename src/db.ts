@@ -32,16 +32,9 @@ if (typeof LQDB_URI === "undefined") {
 const dbEvents = new EventEmitter();
 export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments, getRoleAssignments, getPreferences, getStatuses, getFriendRequests, getFriends };
 
-const logindb = mongoose.createConnection(LOGINDB_URI)
-
-let LoginUsers
-logindb.once("open", () => {
-    LoginUsers = logindb.model('user', loginUserSchema)
-    dbEvents.emit("login_ready");
-})
-
 const lqdb = mongoose.createConnection(LQDB_URI)
 
+let LoginUsers
 let Avatars
 let Quarks
 let Channels
@@ -57,6 +50,7 @@ let Statuses
 let FriendRequests
 let Friends
 lqdb.once("open", () => {
+    LoginUsers = lqdb.model('user', loginUserSchema)
     Avatars = lqdb.model('avatar', userAvatarSchema);
     Quarks = lqdb.model('quark', quarkSchema);
     Channels = lqdb.model('channel', channelSchema);

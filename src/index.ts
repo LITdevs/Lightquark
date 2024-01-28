@@ -99,13 +99,7 @@ import ServerErrorReply from "./classes/reply/ServerErrorReply.js";
 
 let port = process.env.LQ_PORT || 10000;
 let dbReady = false;
-let loginReady = false;
 let unleashReady = false;
-db.dbEvents.on("login_ready", () => {
-    console.debug("Login database ready")
-    loginReady = true;
-    startServer();
-});
 
 db.dbEvents.on("lq_ready", () => {
     console.debug("Database ready")
@@ -121,7 +115,6 @@ unleash.on('synchronized', () => {
 
 async function startServer() {
     if (!dbReady) return;
-    if (!loginReady) return;
     if (!unleashReady) return;
     // Start migrations
     await DefaultRole();
