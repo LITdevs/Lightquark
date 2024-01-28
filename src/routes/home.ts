@@ -1,5 +1,7 @@
 import express from 'express';
 import path from "path";
+import Database from "../db.js";
+const db = new Database()
 
 const router = express.Router();
 
@@ -20,7 +22,7 @@ router.get("/developers/interoperability/preferenceSearch", (req, res) => {
 })
 
 router.get("/developers/interoperability/api/preferences", async (req, res) => {
-	const Preferences = db.getPreferences()
+	const Preferences = db.Preferences
 
 	let keys = await Preferences.aggregate([
 		{
@@ -41,7 +43,7 @@ router.get("/developers/interoperability/api/preferences", async (req, res) => {
 })
 
 router.get("/developers/interoperability/api/attributes", async (req, res) => {
-	const Messages = db.getMessages();
+	const Messages = db.Messages;
 
 	// Perform black magic to find all keys in clientAttributes
 
@@ -85,8 +87,8 @@ import fs from "fs";
 const knownClients = JSON.parse(fs.readFileSync("src/util/knownClients.json").toString());
 import CapabilityParser from "../util/CapabilityParser.js";
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
-import db from "../db.js";
-import {networkInformation, pjson, unleash} from "../index.js";
+import {pjson, unleash} from "../index.js";
+import networkInformation from "../networkInformation.js";
 
 router.get("/features/:clientName", async (req, res) => {
 	try {
@@ -105,9 +107,9 @@ router.get("/features/:clientName", async (req, res) => {
 })
 
 router.get("/v*/stats", (req, res ) => {
-	let Messages = db.getMessages();
-	let Quarks = db.getQuarks();
-	let Channels = db.getChannels();
+	let Messages = db.Messages;
+	let Quarks = db.Quarks;
+	let Channels = db.Channels;
 
 	let messageCount
 	let quarkCount
@@ -150,7 +152,8 @@ router.get("/v*/network", (req, res) => {
 	networkInformation.version = pjson.version;
 	networkInformation.capabilities = {
 	    base: true, // Everything before capabilities was added
-	    userStatus: unleash.isEnabled("LQ_Status", res.locals.unleashContext) // User statuses
+		userStatus: unleash.isEnabled("LQ_Status", res.locals.unleashContext), // User statuses
+		friends: unleash.isEnabled("LQ_Friends", res.locals.unleashContext) // Friends
 	}
 	res.json(networkInformation);
 })

@@ -2,11 +2,11 @@ import * as Sentry from "@sentry/node";
 import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
-import db from "./db.js";
 import fs from "fs";
 import { initialize } from 'unleash-client';
 import {kitty} from "./util/kitty.js";
-export const networkInformation = JSON.parse(fs.readFileSync("network.json").toString());
+import networkInformation from "./networkInformation.js";
+export {networkInformation}
 export const pjson = JSON.parse(fs.readFileSync("package.json").toString());
 const app = express();
 
@@ -56,20 +56,11 @@ app.use((req, res, next) => {
     next();
 })
 
-app.use("/v1/auth", authv2);
-app.use("/v1/user", userv2);
-app.use("/v1/quark", quarkv2);
-app.use("/v1/channel", channelv2);
 app.use("/", express.static("public"));
-import authv2 from './routes/v2/auth.js';
-import userv2 from './routes/v2/user.js';
-import quarkv2 from './routes/v2/quark.js';
-import channelv2 from './routes/v2/channel.js';
-app.use("/v2/auth", authv2);
-app.use("/v2/user", userv2);
-app.use("/v2/quark", quarkv2);
-app.use("/v2/channel", channelv2);
+
+import authv3 from './routes/v3/auth.js';
 import userv3 from './routes/v3/user.js';
+app.use("/v3/auth", authv3);
 app.use("/v3/user", userv3);
 
 import home from './routes/home.js';
@@ -98,13 +89,16 @@ import PermissionManager from "./classes/permissions/PermissionManager.js";
 import NotFoundReply from "./classes/reply/NotFoundReply.js";
 import DefaultRole from "./migrations/DefaultRole.js";
 import ServerErrorReply from "./classes/reply/ServerErrorReply.js";
+import Database from "./db.js";
+
+const database = new Database();
+
 
 let port = process.env.LQ_PORT || 10000;
 let dbReady = false;
 let unleashReady = false;
 
-db.dbEvents.on("lq_ready", () => {
-    console.debug("Database ready")
+database.events.on("ready", () => {
     dbReady = true;
     startServer();
 });

@@ -1,14 +1,15 @@
-import db from "../db.js";
 import {ConstantID_DMvQuark, ConstantID_SystemUser} from "../util/ConstantID.js";
+import Database from "../db.js";
+const db = new Database()
 
 /**
  * Adds missing default role to all quarks older than 2023-06-01
  */
 export default async function () {
-    let Quarks = db.getQuarks();
+    let Quarks = db.Quarks;
     let quarks = await Quarks.find({ _id: { $lt: "64785e100000000000000000" } }).populate("roles")
     quarks = quarks.filter(quark => !quark.roles.some(role => role.isDefault));
-    let Role = db.getRoles();
+    let Role = db.Roles;
     for (const quark of quarks) {
         let role = new Role({
             name: "all",
@@ -37,7 +38,7 @@ export default async function () {
         dmDefaultRole = role;
     }
 
-    let PermissionAssignment = db.getPermissionAssignments();
+    let PermissionAssignment = db.PermissionAssignments;
     let dmDefaultPermission = await PermissionAssignment.findOne({scopeId: ConstantID_DMvQuark, role: dmDefaultRole._id })
     if (!dmDefaultPermission) {
         let permissionAssignment = new PermissionAssignment({

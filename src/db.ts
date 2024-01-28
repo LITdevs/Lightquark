@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import mongoose from 'mongoose';
-import loginUserSchema from './schemas/loginUserSchema.js'
-import userAvatarSchema from './schemas/userAvatarSchema.js'
 import EventEmitter from "events";
+import loginUserSchema from "./schemas/loginUserSchema.js";
+import userAvatarSchema from "./schemas/userAvatarSchema.js";
 import quarkSchema from "./schemas/quarkSchema.js";
 import channelSchema from "./schemas/channelSchema.js";
 import messageSchema from "./schemas/messageSchema.js";
@@ -17,114 +17,69 @@ import preferenceSchema from "./schemas/preferenceSchema.js";
 import userStatusSchema from "./schemas/userStatusSchema.js";
 import friendRequestSchema from "./schemas/friendRequestSchema.js";
 import friendSchema from "./schemas/friendSchema.js";
+import tokenSchema from "./schemas/tokenSchema.js";
+export default class Database {
 
-const LQDB_URI : string | undefined = process.env.LQDB_URI
-if (typeof LQDB_URI === "undefined") {
-    console.error("\nNo lightquark database uri specified, Exiting...");
-    process.exit(3);
-}
+    private static _instance: Database;
+    connected: boolean = false;
 
-const dbEvents = new EventEmitter();
-export default { dbEvents, getLoginUsers, getAvatars, getQuarks, getChannels, getMessages, getQuarkOrders, getNicks, getEmotes, getRoles, getPermissionAssignments, getRoleAssignments, getPreferences, getStatuses, getFriendRequests, getFriends };
+    db: any;
+    events: EventEmitter = new EventEmitter();
 
-const lqdb = mongoose.createConnection(LQDB_URI)
+    Token;
+    LoginUsers;
+    Avatars;
+    Quarks;
+    Channels;
+    Messages;
+    QuarkOrders;
+    Nicks;
+    Emotes;
+    Roles;
+    PermissionAssignments;
+    RoleAssignments;
+    Preferences;
+    Statuses;
+    FriendRequests;
+    Friends;
 
-let LoginUsers
-let Avatars
-let Quarks
-let Channels
-let Messages
-let QuarkOrders
-let Nicks
-let Emotes
-let Roles
-let PermissionAssignments
-let RoleAssignments
-let Preferences
-let Statuses
-let FriendRequests
-let Friends
-lqdb.once("open", () => {
-    LoginUsers = lqdb.model('user', loginUserSchema)
-    Avatars = lqdb.model('avatar', userAvatarSchema);
-    Quarks = lqdb.model('quark', quarkSchema);
-    Channels = lqdb.model('channel', channelSchema);
-    Messages = lqdb.model('message', messageSchema);
-    QuarkOrders = lqdb.model('quarkOrder', quarkOrderSchema);
-    Nicks = lqdb.model('nick', nicknameSchema);
-    Emotes = lqdb.model('emote', emoteSchema);
-    Roles = lqdb.model('roles', roleSchema, 'roles');
-    PermissionAssignments = lqdb.model('permissionAssignments', permissionAssignmentSchema, 'permissionAssignments');
-    RoleAssignments = lqdb.model('roleAssignments', roleAssignmentSchema, 'roleAssignments');
-    Preferences = lqdb.model('preferences', preferenceSchema, 'preferences');
-    Statuses = lqdb.model('statuses', userStatusSchema, 'statuses');
-    FriendRequests = lqdb.model('friendRequests', friendRequestSchema, 'friendRequests');
-    Friends = lqdb.model('friends', friendSchema, 'friends');
-    dbEvents.emit("lq_ready");
-})
+    constructor() {
+        if (typeof Database._instance === "object") return Database._instance;
+        Database._instance = this;
 
-function getLoginUsers() {
-    return LoginUsers;
-}
+        // Connect to the database
+        const DB_URI : string | undefined = process.env.LQDB_URI
+        if (typeof DB_URI === "undefined") {
+            console.error("\nLQDB_URI not found, Exiting...");
+            process.exit(2);
+        }
 
-function getAvatars() {
-    return Avatars;
-}
+        this.db = mongoose.createConnection(DB_URI);
 
-function getQuarks() {
-    return Quarks;
-}
+        this.db.once("open", () => {
+            this.#onOpen();
+            this.connected = true;
+        })
+    }
 
-function getChannels() {
-    return Channels;
-}
-
-function getMessages() {
-    return Messages;
-}
-
-function getQuarkOrders() {
-    return QuarkOrders;
-}
-
-function getNicks() {
-    return Nicks;
-}
-
-function getEmotes() {
-    return Emotes;
-}
-
-function getRoles() {
-    return Roles;
-}
-
-function getPermissionAssignments() {
-    return PermissionAssignments;
-}
-
-function getRoleAssignments() {
-    return RoleAssignments;
-}
-
-function getPreferences() {
-    return Preferences;
-}
-
-function getStatuses() {
-    return Statuses;
-}
-
-/**
- * Warning: this function does not make people want to be your friend
- */
-function getFriendRequests() {
-    return FriendRequests
-}
-
-/**
- * Warning: this function does not give you friends
- */
-function getFriends() {
-    return Friends
+    #onOpen() {
+        console.log("Database connection established");
+        this.Token = this.db.model('token', tokenSchema);
+        this.LoginUsers = this.db.model('user', loginUserSchema)
+        this.Avatars = this.db.model('avatar', userAvatarSchema);
+        this.Quarks = this.db.model('quark', quarkSchema);
+        this.Channels = this.db.model('channel', channelSchema);
+        this.Messages = this.db.model('message', messageSchema);
+        this.QuarkOrders = this.db.model('quarkOrder', quarkOrderSchema);
+        this.Nicks = this.db.model('nick', nicknameSchema);
+        this.Emotes = this.db.model('emote', emoteSchema);
+        this.Roles = this.db.model('roles', roleSchema, 'roles');
+        this.PermissionAssignments = this.db.model('permissionAssignments', permissionAssignmentSchema, 'permissionAssignments');
+        this.RoleAssignments = this.db.model('roleAssignments', roleAssignmentSchema, 'roleAssignments');
+        this.Preferences = this.db.model('preferences', preferenceSchema, 'preferences');
+        this.Statuses = this.db.model('statuses', userStatusSchema, 'statuses');
+        this.FriendRequests = this.db.model('friendRequests', friendRequestSchema, 'friendRequests');
+        this.Friends = this.db.model('friends', friendSchema, 'friends');
+        this.events.emit("ready");
+    }
 }
