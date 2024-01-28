@@ -11,9 +11,9 @@
     "EDIT_CHANNEL_NAME" | // Edit channel name. Requires READ_CHANNEL
     "EDIT_CHANNEL" | // Edit channel information. Requires EDIT_CHANNEL_DESCRIPTION, EDIT_CHANNEL_NAME
     "DELETE_CHANNEL" | // Delete a channel. Requires EDIT_CHANNEL
-    "CREATE_CHANNEL" | // Create channels
-    "CHANNEL_MANAGER" | // Edit, delete, create channels. Requires EDIT_CHANNEL, DELETE_CHANNEL, CREATE_CHANNEL
-    "CHANNEL_ADMIN" | // Edit, delete, create channels. Requires CHANNEL_MANAGER, MESSAGE_ADMIN
+    "CREATE_CHANNEL" | // Create channel
+    "CHANNEL_MANAGER" | // Edit, delete, create channel. Requires EDIT_CHANNEL, DELETE_CHANNEL, CREATE_CHANNEL
+    "CHANNEL_ADMIN" | // Edit, delete, create channel. Requires CHANNEL_MANAGER, MESSAGE_ADMIN
 
     /*
     "BAN_USER_CHANNEL" | // Ban users from a channel. Requires READ_CHANNEL

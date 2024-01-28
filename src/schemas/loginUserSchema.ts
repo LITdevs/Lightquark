@@ -54,7 +54,7 @@ const findHook = function (this: any, next: () => void) {
             _recursed: true
         },
         transform: doc => {
-            if (doc.type) return plainStatus(doc) // If the document has a "type" property it is probably a status document
+            if (doc?.type) return plainStatus(doc) // If the document has a "type" property it is probably a status document
             return doc
         }
     });

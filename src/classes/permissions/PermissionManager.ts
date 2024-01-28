@@ -40,9 +40,9 @@ export default class PermissionManager {
         r("EDIT_CHANNEL_NAME", "deny", "Edit channel name", ["READ_CHANNEL"]);
         r("EDIT_CHANNEL", "deny", "Edit channel information", ["EDIT_CHANNEL_DESCRIPTION", "EDIT_CHANNEL_NAME"]);
         r("DELETE_CHANNEL", "deny", "Delete a channel", ["EDIT_CHANNEL"]);
-        r("CREATE_CHANNEL", "deny", "Create channels", [], ["quark"]);
-        r("CHANNEL_MANAGER", "deny", "Manage channels. Grants all channel management permissions.", ["EDIT_CHANNEL", "DELETE_CHANNEL", "CREATE_CHANNEL"]);
-        r("CHANNEL_ADMIN", "deny", "Manage channels and messages. Grants Channel Manager and Message Admin permissions.", ["CHANNEL_MANAGER", "MESSAGE_ADMIN"]);
+        r("CREATE_CHANNEL", "deny", "Create channel", [], ["quark"]);
+        r("CHANNEL_MANAGER", "deny", "Manage channel. Grants all channel management permissions.", ["EDIT_CHANNEL", "DELETE_CHANNEL", "CREATE_CHANNEL"]);
+        r("CHANNEL_ADMIN", "deny", "Manage channel and messages. Grants Channel Manager and Message Admin permissions.", ["CHANNEL_MANAGER", "MESSAGE_ADMIN"]);
 
         r("CREATE_EMOTE", "deny", "Add new emotes", [], ["quark"]);
         r("EDIT_EMOTE", "deny", "Edit emotes", [], ["quark"]);

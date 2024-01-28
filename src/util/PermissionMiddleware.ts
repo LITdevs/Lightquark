@@ -12,7 +12,7 @@ import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
  *
  * Usage:
  * ```js
- * app.get("/channels/:id", P("ADMIN", "channel"), (req, res) => { ... });
+ * app.get("/channel/:id", P("ADMIN", "channel"), (req, res) => { ... });
  * ```
  *
  * @param permissions {string|string[]} The permission(s) to check for
@@ -21,11 +21,12 @@ import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
  */
 export default function P(permissions : (PermissionType|PermissionType[]), scope: ("channel"|"quark")) : Function {
     return async (req, res, next) => {
-        if (!isValidObjectId(req.params.id)) {
+        let id = req.params.quarkId || req.params.channelId
+        if (!isValidObjectId(id)) {
             return res.reply(new InvalidReplyMessage(`Invalid ${scope} ID`));
         }
         try {
-            let check = await checkPermitted(permissions, { scopeType: scope, scopeId: req.params.id }, res.locals.user._id);
+            let check = await checkPermitted(permissions, { scopeType: scope, scopeId: id }, res.locals.user._id);
             if (!check.permitted) {
                 return res.reply(new ForbiddenReply(`Missing permissions ${check.missingPermissions.join(", ")}`));
             }

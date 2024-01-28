@@ -1,14 +1,9 @@
 import UnauthorizedReply from "../classes/reply/UnauthorizedReply.js";
-import * as jose from "jose";
+import Database from "../db.js";
 const database = new Database()
 import ServerErrorReply from "../classes/reply/ServerErrorReply.js";
-
-import Database from "../db.js";
-import networkInformation from "../networkInformation.js";
 import Reply from "../classes/reply/Reply.js";
 import Token from "../classes/Token/Token.js";
-
-const secret = new TextEncoder().encode(process.env.JWT_SECRET);
 
 export default async function Auth(req, res, next) {
     if (!req.headers.authorization) return res.reply(new UnauthorizedReply("Missing Authorization header with Bearer token"))
@@ -41,11 +36,13 @@ export default async function Auth(req, res, next) {
 
 export async function WsAuth(jwt) : Promise<false | object> {
     try {
-         const { payload } = await jose.jwtVerify(jwt, secret, {
-            issuer: networkInformation.baseUrl,
-            audience: 'Lightquark-client',
-        })
-        return payload;
+        //  const { payload } = await jose.jwtVerify(jwt, secret, {
+        //     issuer: networkInformation.baseUrl,
+        //     audience: 'Lightquark-client',
+        // })
+        // return payload;
+        return false
+        // FIXME
     } catch (e : any) {
         if (["ERR_JWT_CLAIM_VALIDATION_FAILED", "ERR_JWS_INVALID", "ERR_JWS_SIGNATURE_VERIFICATION_FAILED", "ERR_JWT_EXPIRED"].includes(e.code)) {
             return false;
