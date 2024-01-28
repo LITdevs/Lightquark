@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "lightquark",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Proof of Concept",
   "exports": "./src/index.ts",
   "repository": "https://github.com/LITdevs/Lightquark.git",
