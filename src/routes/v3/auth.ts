@@ -10,6 +10,8 @@ import {checkPassword, encryptPassword} from "../../util/Password.js";
 import AccessToken from "../../classes/Token/AccessToken.js";
 import RefreshToken from "../../classes/Token/RefreshToken.js";
 import {Types} from "mongoose";
+import Token from "../../classes/Token/Token.js";
+import UnauthorizedReply from "../../classes/reply/UnauthorizedReply.js";
 
 const router = express.Router();
 const database = new Database()
@@ -95,6 +97,42 @@ router.post("/token", RequiredProperties([
     } catch (e) {
         console.error(e);
         res.reply(new ServerErrorReply())
+    }
+})
+
+router.post("/refresh", RequiredProperties([
+    {
+        property: "accessToken",
+        type: "string"
+    },
+    {
+        property: "refreshToken",
+        type: "string"
+    }
+]), async (req, res) => {
+    try {
+        let accessToken = Token.from(req.body.accessToken);
+        let refreshToken = Token.from(req.body.refreshToken);
+        if (accessToken.type !== "access") return res.reply(new BadRequestReply("accessToken is not access token"))
+        if (refreshToken.type !== "refresh") return res.reply(new BadRequestReply("refreshToken is not refresh token"))
+
+        let dToken = await refreshToken.isActive(); // This returns either token document or false
+        if (!dToken) return res.reply(new UnauthorizedReply("Invalid token"))
+
+        if (dToken.refresh !== refreshToken.token) return res.reply(new UnauthorizedReply("Invalid token"))
+        if (dToken.access !== accessToken.token) return res.reply(new UnauthorizedReply("Invalid token"))
+
+        dToken.access = new AccessToken(new Date(Date.now() + 1000 * 60 * 60 * 8), accessToken.scope); // Generate a new access token for 8 hours
+        await dToken.save();
+        return res.reply(new Reply(200, true, {
+                message: "Token refreshed",
+                accessToken: dToken.access,
+                expiresInSec: 28800
+            }));
+    } catch (e: any) {
+        if (e.message.startsWith("Invalid token:")) return res.reply(new BadRequestReply(e.message))
+        console.error(e)
+        return res.reply(new ServerErrorReply())
     }
 })
 
