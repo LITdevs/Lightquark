@@ -34,21 +34,20 @@ export default async function Auth(req, res, next) {
     }
 }
 
-export async function WsAuth(jwt) : Promise<false | object> {
+export async function WsAuth(token : string) : Promise<false | object> {
     try {
-        //  const { payload } = await jose.jwtVerify(jwt, secret, {
-        //     issuer: networkInformation.baseUrl,
-        //     audience: 'Lightquark-client',
-        // })
-        // return payload;
-        return false
-        // FIXME
+        let oToken = Token.from(token);
+        if (oToken.scope !== "LQ") return false;
+        if (oToken.type !== "access") return false;
+
+        // Wowie! We made it through all those checks... surely this token is real?
+        let dToken = await oToken.isActive(); // This returns either token document or false
+        if (!dToken) return false;
+        dToken.user.populate()
+        return dToken.user
+
     } catch (e : any) {
-        if (["ERR_JWT_CLAIM_VALIDATION_FAILED", "ERR_JWS_INVALID", "ERR_JWS_SIGNATURE_VERIFICATION_FAILED", "ERR_JWT_EXPIRED"].includes(e.code)) {
-            return false;
-        } else {
-            console.error(e)
-            return false;
-        }
+        if (!e.message.startsWith("Invalid token:")) console.error(e)
+        return false;
     }
 }

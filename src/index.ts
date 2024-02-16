@@ -60,10 +60,12 @@ app.use("/", express.static("public"));
 
 import authv3 from './routes/v3/auth.js';
 import userv3 from './routes/v3/user.js';
-import channelv3 from './routes/v3/channel.js'
+import channelv3 from './routes/v3/channel.js';
+app.use("/v1/auth", authv3);
+app.use("/v1/user", userv3);
+app.use("/v1/channel", channelv3);
 app.use("/v3/auth", authv3);
 app.use("/v3/user", userv3);
-app.use("/v3/channel", channelv3);
 app.use("/v3/channel", channelv3);
 
 import home from './routes/home.js';

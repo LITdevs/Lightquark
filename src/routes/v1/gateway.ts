@@ -41,7 +41,7 @@ export default (server) => {
             return ws.close(1008, "You are not permitted to connect to this gateway");
         }
         // Check if the user is authenticated
-        WsAuth(req.headers["sec-websocket-protocol"]).then(user => {
+        WsAuth(req.headers["sec-websocket-protocol"]).then((user : any) => {
             if (!user) {
                 ws.close(1008, "You are not permitted to connect to this gateway");
                 console.log("Unauthorized connection attempt to gateway");
@@ -69,10 +69,10 @@ async function handleMessage(message, ws, user, socketId) {
         let data = JSON.parse(message);
         // Heartbeat event
         if (data.event === "heartbeat") {
-            if (!data.message) return ws.send(JSON.stringify({eventId: "error", message: "Missing message body", code: 400}));
+            if (!data.message) return ws.send(JSON.stringify({eventId: "error", message: "Missing message body", code: 400, state: data?.state}));
             // Tell the subscription manager that the client is still alive and respond
             sm.clientHeartbeat(socketId);
-            ws.send(JSON.stringify({eventId: "heartbeat", message: `Still alive -GLaDOS probably. Message hash: ${crypto.createHash("sha1").update(data.message).digest("base64").substring(2,10)}`, code: 200}));
+            ws.send(JSON.stringify({eventId: "heartbeat", message: `Still alive -GLaDOS probably. Message hash: ${crypto.createHash("sha1").update(data.message).digest("base64").substring(2,10)}`, code: 200, state: data?.state}));
         }
 
         // Subscribe event
@@ -80,7 +80,7 @@ async function handleMessage(message, ws, user, socketId) {
             if (!data.message) return ws.send(JSON.stringify({
                 eventId: "error",
                 message: "Missing message body",
-                code: 400
+                code: 400, state: data?.state
             }));
             let event = data.message;
             let validEvent = sm.validEvent(event);
@@ -88,7 +88,7 @@ async function handleMessage(message, ws, user, socketId) {
                 eventId: "error",
                 message: "Invalid event",
                 event,
-                code: validEvent
+                code: validEvent, state: data?.state
             }));
 
             // Check if the user is permitted to subscribe to the event
@@ -102,7 +102,7 @@ async function handleMessage(message, ws, user, socketId) {
                     ws.send(JSON.stringify(data));
                 }
                 await sm.subscribe(event, sub, user, socketId);
-                ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
+                ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200, state: data?.state}));
 
             } else if (event.split("_")[0] === "channel") {
                 let permitted = await checkPermittedChannel("READ_CHANNEL", event.split("_")[1], user._id)
@@ -111,9 +111,9 @@ async function handleMessage(message, ws, user, socketId) {
                         ws.send(JSON.stringify(data));
                     }
                     await sm.subscribe(event, sub, user, socketId);
-                    ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
+                    ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200, state: data?.state}));
                 } else {
-                    ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403, event}));
+                    ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403, event, state: data?.state}));
                 }
             } else if (event.split("_")[0] === "quark") {
                 let Quarks = database.Quarks;
@@ -129,32 +129,32 @@ async function handleMessage(message, ws, user, socketId) {
                             channels: []
                         }
                     }
-                    if (!quark) return ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403, event}));
+                    if (!quark) return ws.send(JSON.stringify({eventId: "error", message: "You are not permitted to subscribe to this event", code: 403, event, state: data?.state}));
                     const sub = (data) => {
                         ws.send(JSON.stringify(data));
                     }
                     await sm.subscribe(event, sub, user, socketId);
-                    ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200}));
+                    ws.send(JSON.stringify({eventId: "subscribe", message: "Successfully subscribed to event", code: 200, state: data?.state}));
 
                 } catch (err) {
                     console.error(err);
-                    return ws.send(JSON.stringify({eventId: "error", message: "Internal Server Error", code: 500}));
+                    return ws.send(JSON.stringify({eventId: "error", message: "Internal Server Error", code: 500, state: data?.state}));
                 }
             } else {
-                return ws.send(JSON.stringify({eventId: "error", message: "Not implemented", code: 501}));
+                return ws.send(JSON.stringify({eventId: "error", message: "Not implemented", code: 501, state: data?.state}));
             }
         }
         if (data.event === "unsubscribe") {
-            if (!data.message) return ws.send(JSON.stringify({eventId: "error", message: "Missing message body", code: 400}));
+            if (!data.message) return ws.send(JSON.stringify({eventId: "error", message: "Missing message body", code: 400, state: data?.state}));
             sm.unsubscribe(data.message, socketId);
-            ws.send(JSON.stringify({eventId: "unsubscribe", message: "Unsubscribed", code: 200}));
+            ws.send(JSON.stringify({eventId: "unsubscribe", message: "Unsubscribed", code: 200, state: data?.state}));
         }
         if (data.event === "unsubscribeAll") {
             sm.unsubscribeAll(socketId);
-            ws.send(JSON.stringify({eventId: "unsubscribeAll", message: "Unsubscribed from all events", code: 200}));
+            ws.send(JSON.stringify({eventId: "unsubscribeAll", message: "Unsubscribed from all events", code: 200, state: data?.state}));
         }
     } catch (e) {
         console.error(e);
-        ws.send(JSON.stringify({eventId: "error", message: "Internal Server Error", code: 500}));
+        ws.send(JSON.stringify({eventId: "error", message: "Internal Server Error", code: 500, state: null}));
     }
 }
